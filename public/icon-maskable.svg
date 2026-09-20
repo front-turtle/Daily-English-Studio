@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGradMaskable" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#3730a3" />
+    </linearGradient>
+    <linearGradient id="badgeGradMaskable" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Full Bleed Background (no rounded corners for maskable) -->
+  <rect width="512" height="512" fill="url(#bgGradMaskable)" />
+
+  <!-- Inner Safe Zone elements (kept within 10-15% padding) -->
+  <g transform="translate(256, 256) scale(0.78) translate(-256, -256)">
+    <!-- EN Badge -->
+    <rect x="136" y="112" width="240" height="150" rx="40" fill="url(#badgeGradMaskable)" stroke="#ffffff" stroke-opacity="0.3" stroke-width="4" />
+    <text x="256" y="218" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="104" font-weight="900" fill="#ffffff" letter-spacing="2">EN</text>
+
+    <!-- Subtitle / Pen Accent -->
+    <rect x="156" y="304" width="200" height="18" rx="9" fill="#ffffff" fill-opacity="0.9" />
+    <rect x="180" y="342" width="152" height="16" rx="8" fill="#c7d2fe" />
+    <rect x="206" y="378" width="100" height="14" rx="7" fill="#a5b4fc" fill-opacity="0.8" />
+
+    <!-- Sparkle Accent -->
+    <circle cx="370" cy="118" r="14" fill="#fbbf24" />
+    <circle cx="140" cy="270" r="8" fill="#38bdf8" />
+  </g>
+</svg>

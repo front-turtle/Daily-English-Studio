@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "User profile metadata",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "lastLoginAt": { "type": "number" }
+      },
+      "required": ["uid"]
+    },
+    "compositions": {
+      "title": "Daily English Compositions",
+      "description": "Personal daily English writing practice and tips",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "korean": { "type": "string" },
+        "english": { "type": "string" },
+        "polished": { "type": "string" },
+        "polishedTip": { "type": "string" },
+        "favorite": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "date", "korean", "english"]
+    },
+    "audioItems": {
+      "title": "Audio and Shadowing Recordings",
+      "description": "User uploaded audio and shadowing voice recordings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "fileName": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "myRecordingUrl": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "audioUrl", "date"]
+    },
+    "expressions": {
+      "title": "Key English Expressions",
+      "description": "Saved key English vocabulary and expressions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "expression": { "type": "string" },
+        "meaning": { "type": "string" },
+        "memo": { "type": "string" },
+        "favorite": { "type": "boolean" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "expression", "meaning", "date"]
+    }
+  }
+}
