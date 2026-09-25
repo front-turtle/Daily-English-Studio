@@ -234,43 +234,27 @@ export async function resolvePlayableAudioUrl(
   id: string,
   audioUrl?: string,
   audioBase64?: string | null,
-  onResolvedBase64?: (base64: string) => void
+  _onResolvedBase64?: (base64: string) => void
 ): Promise<string> {
-  // 1. If audioBase64 is directly provided
+  // 1. Cross-device source: Firestore-synced base64 audio.
   if (audioBase64 && audioBase64.length > 20) {
     const normalizedB64 = normalizeBase64DataUrl(audioBase64, audioUrl);
-    
-    // For smaller audio files (typical shadowing clips < 2MB), standard data: URL is the most reliable on mobile Safari
-    // as it avoids WebKit cross-process blob sandbox permission bugs
-    if (normalizedB64.length < 2_500_000) {
-      // Also cache in IndexedDB in background
-      try {
-        const mime = normalizeAudioMimeType('', audioUrl);
-        const blob = base64ToBlob(normalizedB64, mime);
-        saveAudioToStorage(id, blob).catch(() => {});
-      } catch {}
-      return normalizedB64;
-    }
 
-    // For larger files, create Blob URL
     try {
       const mime = normalizeAudioMimeType('', audioUrl);
       const blob = base64ToBlob(normalizedB64, mime);
-      await saveAudioToStorage(id, blob);
-      const objectUrl = URL.createObjectURL(blob);
-      blobUrlCache.set(id, objectUrl);
-      return objectUrl;
-    } catch {
-      return normalizedB64;
-    }
+      saveAudioToStorage(id, blob).catch(() => {});
+    } catch {}
+
+    return normalizedB64;
   }
 
-  // 2. If we already have a cached Blob URL for this item, return it
+  // 2. In-memory cache.
   if (blobUrlCache.has(id)) {
     return blobUrlCache.get(id)!;
   }
 
-  // 3. Check IndexedDB storage
+  // 3. Current-device offline cache.
   const cachedBlob = await getAudioFromStorage(id);
   if (cachedBlob && cachedBlob.size > 0) {
     const objectUrl = URL.createObjectURL(cachedBlob);
@@ -278,74 +262,17 @@ export async function resolvePlayableAudioUrl(
     return objectUrl;
   }
 
-  // 4. If audioUrl is already a blob URL or data URL
-  if (audioUrl?.startsWith('blob:') || audioUrl?.startsWith('data:')) {
-    return audioUrl.startsWith('data:') ? normalizeBase64DataUrl(audioUrl) : audioUrl;
+  // 4. Legacy local data/blob URL support.
+  if (audioUrl?.startsWith('data:')) {
+    return normalizeBase64DataUrl(audioUrl);
+  }
+  if (audioUrl?.startsWith('blob:')) {
+    return audioUrl;
   }
 
-  // 5. Try fetching from server via resolve-base64 endpoint
-  if (audioUrl) {
-    try {
-      const res = await fetch(`/api/audio/resolve-base64?path=${encodeURIComponent(audioUrl)}&id=${encodeURIComponent(id)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.base64) {
-          const normalizedB64 = normalizeBase64DataUrl(data.base64, audioUrl);
-          const mime = normalizeAudioMimeType(data.mimeType || '', audioUrl);
-          const blob = base64ToBlob(normalizedB64, mime);
-          await saveAudioToStorage(id, blob);
-
-          if (onResolvedBase64) {
-            onResolvedBase64(normalizedB64);
-          }
-
-          if (normalizedB64.length < 2_500_000) {
-            return normalizedB64;
-          }
-
-          const objectUrl = URL.createObjectURL(blob);
-          blobUrlCache.set(id, objectUrl);
-          return objectUrl;
-        }
-      }
-    } catch (err) {
-      console.warn('Could not resolve audio via API:', err);
-    }
-
-    // 6. Direct stream fallback via RFC 206 Range Stream endpoint
-    if (audioUrl.includes('/uploads/audio/')) {
-      const fileName = audioUrl.split('/').pop();
-      if (fileName) {
-        return `/api/audio/stream/${encodeURIComponent(fileName)}`;
-      }
-    }
-
-    // 7. Direct fetch fallback
-    try {
-      const directRes = await fetch(audioUrl);
-      if (directRes.ok) {
-        const directBlob = await directRes.blob();
-        if (directBlob.size > 0) {
-          await saveAudioToStorage(id, directBlob);
-          const objectUrl = URL.createObjectURL(directBlob);
-          blobUrlCache.set(id, objectUrl);
-
-          if (directBlob.size < 700000 && onResolvedBase64) {
-            blobToBase64(directBlob).then((b64) => {
-              onResolvedBase64(normalizeBase64DataUrl(b64, audioUrl));
-            }).catch(() => {});
-          }
-
-          return objectUrl;
-        }
-      }
-    } catch (directErr) {
-      console.warn('Direct audio fetch error:', directErr);
-    }
-  }
-
-  // 8. Last resort: return original audioUrl
-  return audioUrl || '';
+  // Server upload URLs from the old AI Studio deployment are intentionally
+  // not fetched here. New items are stored in Firestore as base64.
+  return '';
 }
 
 /**

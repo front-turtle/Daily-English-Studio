@@ -1,12 +1,8 @@
 {
-  "projectId": "authentic-inscriber-vnm9t",
-  "appId": "1:373974464199:web:e04f4f6ced052760beb0e2",
-  "apiKey": "AIzaSyAH4l3_GjXAEyInjr4m-O-1rEcxE-oZTjw",
-  "authDomain": "authentic-inscriber-vnm9t.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-dailyenglishstud-26ab7323-6810-4bc3-bacc-6c128c713e8b",
-  "storageBucket": "authentic-inscriber-vnm9t.firebasestorage.app",
-  "messagingSenderId": "373974464199",
-  "measurementId": "",
-  "oAuthClientId": "373974464199-bak014e8kusnjt03u1h9k99k4dv79o6a.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "apiKey": "AIzaSyCIqukvDiF--QPB7IiV6K5D4IYI7_RVHT4",
+  "authDomain": "daily-english-studio-d182a.firebaseapp.com",
+  "projectId": "daily-english-studio-d182a",
+  "storageBucket": "daily-english-studio-d182a.firebasestorage.app",
+  "messagingSenderId": "14355926448",
+  "appId": "1:14355926448:web:1dfbc92e2d7cbcf2ac9a75"
 }
