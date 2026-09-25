@@ -15,7 +15,6 @@ import {
   Edit3,
   Plus,
   ArrowDown,
-  RefreshCw,
   X,
   Share2,
   Copy,
@@ -116,7 +115,6 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
   const [editingPolishId, setEditingPolishId] = useState<string | null>(null);
   const [polishInput, setPolishInput] = useState('');
   const [polishTipInput, setPolishTipInput] = useState('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -166,31 +164,6 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
     showToast('다듬은 표현이 저장되었습니다.');
   };
 
-  // Optional AI helper for polishing
-  const handleAiSuggestPolish = async (comp: DailyComposition) => {
-    setIsAiLoading(true);
-    try {
-      const res = await fetch('/api/ai/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          korean: comp.korean,
-          english: comp.english,
-        }),
-      });
-      if (!res.ok) throw new Error('AI 응답 실패');
-      const data = await res.json();
-      if (data.polishedSentence) {
-        setPolishInput(data.polishedSentence);
-        if (data.tip) setPolishTipInput(data.tip);
-      }
-    } catch (err) {
-      console.error(err);
-      alert('AI 추천을 불러오는 중 오류가 발생했습니다.');
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
 
   // Filter compositions strictly for selected date (Entire list toggle removed per user request)
   const displayedCompositions = compositions.filter((c) => c.date === selectedDate);
@@ -510,20 +483,6 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
                           <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                           다듬은 표현(개선문) 입력
                         </span>
-
-                        <button
-                          type="button"
-                          onClick={() => handleAiSuggestPolish(comp)}
-                          disabled={isAiLoading}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-semibold text-[11px] transition-colors disabled:opacity-50 cursor-pointer"
-                        >
-                          {isAiLoading ? (
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3 h-3" />
-                          )}
-                          <span>AI 추천받기</span>
-                        </button>
                       </div>
 
                       <textarea
