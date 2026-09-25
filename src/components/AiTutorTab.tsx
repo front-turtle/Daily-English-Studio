@@ -1,23 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, Send, Sparkles, Trash2, User, BookmarkPlus, Check, X } from 'lucide-react';
 import { createEnglishTutorChat, TutorHistoryItem } from '../lib/geminiTutor';
-import { KeyExpression } from '../types';
-
-interface TutorMessage {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-}
+import { AiTutorMessage, KeyExpression } from '../types';
+import { useAuth } from '../context/AuthContext';
+import {
+  clearAiTutorMessagesFromFirestore,
+  saveAiTutorMessagesToFirestore,
+  subscribeToAiTutorMessages,
+} from '../lib/firestoreService';
 
 interface AiTutorTabProps {
   currentDate: string;
-  onAddExpression: (item: Omit<KeyExpression, 'id' | 'createdAt'>) => void;
+  onAddExpression: (
+    item: Omit<KeyExpression, 'id' | 'createdAt'>
+  ) => Promise<KeyExpression> | KeyExpression;
+  onStartPractice: (expression: KeyExpression) => void;
 }
 
 const STORAGE_KEY = 'ai_tutor_messages_v1';
 const MAX_SAVED_MESSAGES = 30;
 
-function loadSavedMessages(): TutorMessage[] {
+function loadSavedMessages(): AiTutorMessage[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
@@ -131,8 +134,15 @@ function extractEnglishCandidate(text: string) {
   return englishHeavy || '';
 }
 
-export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpression }) => {
-  const [messages, setMessages] = useState<TutorMessage[]>(loadSavedMessages);
+export const AiTutorTab: React.FC<AiTutorTabProps> = ({
+  currentDate,
+  onAddExpression,
+  onStartPractice,
+}) => {
+  const { user } = useAuth();
+  const initialLocalMessages = useRef<AiTutorMessage[]>(loadSavedMessages());
+  const [messages, setMessages] = useState<AiTutorMessage[]>(initialLocalMessages.current);
+  const messagesRef = useRef<AiTutorMessage[]>(initialLocalMessages.current);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -144,7 +154,7 @@ export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpres
   const [saveMemo, setSaveMemo] = useState('');
   const [savedMessageId, setSavedMessageId] = useState<string | null>(null);
 
-  const buildChat = (source: TutorMessage[] = messages) => {
+  const buildChat = (source: AiTutorMessage[] = messages) => {
     const history: TutorHistoryItem[] = source.map((message) => ({
       role: message.role,
       parts: [{ text: message.text }],
@@ -153,51 +163,114 @@ export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpres
   };
 
   useEffect(() => {
+    messagesRef.current = messages;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_SAVED_MESSAGES)));
     } catch {}
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    let isFirstSnapshot = true;
+    let disposed = false;
+
+    const unsubscribe = subscribeToAiTutorMessages(
+      user.uid,
+      (remoteMessages) => {
+        if (disposed) return;
+
+        if (isFirstSnapshot) {
+          isFirstSnapshot = false;
+
+          // One-time migration: if the cloud is empty, upload this device's existing chat.
+          if (remoteMessages.length === 0 && initialLocalMessages.current.length > 0) {
+            const localSeed = initialLocalMessages.current.slice(-MAX_SAVED_MESSAGES);
+            setMessages(localSeed);
+            messagesRef.current = localSeed;
+            saveAiTutorMessagesToFirestore(user.uid, localSeed).catch((err) =>
+              console.warn('AI tutor initial cloud sync error:', err)
+            );
+            return;
+          }
+        }
+
+        setMessages(remoteMessages.slice(-MAX_SAVED_MESSAGES));
+        messagesRef.current = remoteMessages.slice(-MAX_SAVED_MESSAGES);
+
+        // Rebuild chat context from the newly synced history on the next question.
+        chatRef.current = null;
+      },
+      (err) => console.warn('AI tutor cloud listener error:', err)
+    );
+
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
+  }, [user]);
+
   const sendMessage = async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || isLoading) return;
 
-    const userMessage: TutorMessage = {
+    const historyBeforeSend = messagesRef.current;
+    const userMessage: AiTutorMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       text,
+      createdAt: Date.now(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const nextWithUser = [...historyBeforeSend, userMessage].slice(-MAX_SAVED_MESSAGES);
+    setMessages(nextWithUser);
+    messagesRef.current = nextWithUser;
+    if (user) {
+      saveAiTutorMessagesToFirestore(user.uid, nextWithUser).catch((err) =>
+        console.warn('AI tutor user message sync error:', err)
+      );
+    }
+
     setInput('');
     setIsLoading(true);
 
     try {
       if (!chatRef.current) {
-        buildChat(messages);
+        buildChat(historyBeforeSend);
       }
-      const result = await chatRef.current!.sendMessage(text);
+      const activeChat = chatRef.current!;
+      const result = await activeChat.sendMessage(text);
       const answer = result.response.text().trim();
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `model-${Date.now()}`,
-          role: 'model',
-          text: answer || '답변을 생성하지 못했습니다. 다시 질문해 주세요.',
-        },
-      ]);
+      const modelMessage: AiTutorMessage = {
+        id: `model-${Date.now()}`,
+        role: 'model',
+        text: answer || '답변을 생성하지 못했습니다. 다시 질문해 주세요.',
+        createdAt: Date.now(),
+      };
+      const nextWithModel = [...messagesRef.current, modelMessage].slice(-MAX_SAVED_MESSAGES);
+      setMessages(nextWithModel);
+      messagesRef.current = nextWithModel;
+      if (user) {
+        saveAiTutorMessagesToFirestore(user.uid, nextWithModel).catch((err) =>
+          console.warn('AI tutor model message sync error:', err)
+        );
+      }
     } catch (err) {
       console.error('AI tutor error:', err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          role: 'model',
-          text: 'AI 응답을 불러오지 못했습니다. Firebase AI Logic 설정을 확인한 뒤 다시 시도해 주세요.',
-        },
-      ]);
+      const errorMessage: AiTutorMessage = {
+        id: `error-${Date.now()}`,
+        role: 'model',
+        text: 'AI 응답을 불러오지 못했습니다. Firebase AI Logic 설정을 확인한 뒤 다시 시도해 주세요.',
+        createdAt: Date.now(),
+      };
+      const nextWithError = [...messagesRef.current, errorMessage].slice(-MAX_SAVED_MESSAGES);
+      setMessages(nextWithError);
+      messagesRef.current = nextWithError;
+      if (user) {
+        saveAiTutorMessagesToFirestore(user.uid, nextWithError).catch(() => {});
+      }
     } finally {
       setIsLoading(false);
     }
@@ -205,6 +278,7 @@ export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpres
 
   const resetChat = () => {
     setMessages([]);
+    messagesRef.current = [];
     setInput('');
     chatRef.current = null;
     setSaveTargetId(null);
@@ -212,9 +286,14 @@ export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpres
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
+    if (user) {
+      clearAiTutorMessagesFromFirestore(user.uid).catch((err) =>
+        console.warn('AI tutor cloud clear error:', err)
+      );
+    }
   };
 
-  const openExpressionSave = (message: TutorMessage) => {
+  const openExpressionSave = (message: AiTutorMessage) => {
     const selected = typeof window !== 'undefined' ? window.getSelection()?.toString().trim() || '' : '';
     const candidate =
       selected && /[A-Za-z]{2,}/.test(selected) && selected.length <= 220
@@ -227,13 +306,13 @@ export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpres
     setSaveMemo('AI 튜터 답변에서 저장');
   };
 
-  const saveToExpressions = (messageId: string) => {
+  const saveToExpressions = async (messageId: string, startPractice = false) => {
     if (!saveExpression.trim() || !saveMeaning.trim()) {
       alert('저장할 영어 표현과 한글 뜻을 입력해주세요.');
       return;
     }
 
-    onAddExpression({
+    const saved = await onAddExpression({
       expression: saveExpression.trim(),
       meaning: saveMeaning.trim(),
       memo: saveMemo.trim() || 'AI 튜터 답변에서 저장',
@@ -245,6 +324,10 @@ export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpres
     setSaveTargetId(null);
     setSavedMessageId(messageId);
     setTimeout(() => setSavedMessageId(null), 2500);
+
+    if (startPractice) {
+      onStartPractice(saved);
+    }
   };
 
   const quickPrompts = [
@@ -382,13 +465,20 @@ export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpres
                         placeholder="메모 (선택)"
                         className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-[11px] outline-none focus:border-indigo-500"
                       />
-                      <div className="flex justify-end">
+                      <div className="flex flex-wrap justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => saveToExpressions(message.id)}
+                          className="px-3 py-1.5 rounded-lg bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-semibold"
+                        >
+                          저장만 하기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => saveToExpressions(message.id, true)}
                           className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
                         >
-                          저장
+                          저장하고 발화 연습
                         </button>
                       </div>
                       <p className="text-[10px] text-slate-400">

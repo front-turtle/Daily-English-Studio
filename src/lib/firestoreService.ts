@@ -12,7 +12,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { DailyComposition, AudioItem, KeyExpression } from '../types';
+import { DailyComposition, AudioItem, KeyExpression, AiTutorMessage } from '../types';
 
 // Helper to get local set of deleted IDs
 export const getLocalDeletedIds = (key: string): Set<string> => {
@@ -369,4 +369,78 @@ export const deleteExpressionFromFirestore = async (userId: string | undefined, 
       console.warn('Recording deletedExpressionId in user doc:', err);
     }
   }
+};
+
+
+// --- AI TUTOR CHAT SYNC ---
+// Stored inside /users/{uid} so the existing owner-only user document rule protects it.
+// Only the latest 30 messages are kept to stay lightweight and well below Firestore document limits.
+export const subscribeToAiTutorMessages = (
+  userId: string,
+  onData: (items: AiTutorMessage[]) => void,
+  onError?: (err: Error) => void
+) => {
+  const userRef = doc(db, 'users', userId);
+  return onSnapshot(
+    userRef,
+    (snapshot) => {
+      const raw = snapshot.exists() ? snapshot.data()?.aiTutorMessages : [];
+      const list: AiTutorMessage[] = Array.isArray(raw)
+        ? raw
+            .filter(
+              (item: any) =>
+                item &&
+                typeof item.id === 'string' &&
+                (item.role === 'user' || item.role === 'model') &&
+                typeof item.text === 'string'
+            )
+            .map((item: any) => ({
+              id: item.id,
+              role: item.role,
+              text: item.text,
+              createdAt: typeof item.createdAt === 'number' ? item.createdAt : 0,
+            }))
+            .slice(-30)
+        : [];
+      onData(list);
+    },
+    (err) => {
+      console.warn('Firestore AI tutor listener error:', err);
+      if (onError) onError(err);
+    }
+  );
+};
+
+export const saveAiTutorMessagesToFirestore = async (
+  userId: string,
+  items: AiTutorMessage[]
+) => {
+  const userRef = doc(db, 'users', userId);
+  const cleanItems = items.slice(-30).map((item) => ({
+    id: item.id,
+    role: item.role,
+    text: item.text,
+    createdAt: item.createdAt || Date.now(),
+  }));
+
+  await setDoc(
+    userRef,
+    {
+      aiTutorMessages: cleanItems,
+      aiTutorUpdatedAt: Date.now(),
+    },
+    { merge: true }
+  );
+};
+
+export const clearAiTutorMessagesFromFirestore = async (userId: string) => {
+  const userRef = doc(db, 'users', userId);
+  await setDoc(
+    userRef,
+    {
+      aiTutorMessages: [],
+      aiTutorUpdatedAt: Date.now(),
+    },
+    { merge: true }
+  );
 };

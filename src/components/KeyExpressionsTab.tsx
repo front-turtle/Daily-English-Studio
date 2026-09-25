@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { KeyExpression } from '../types';
 import { playEnglishSpeech } from '../utils/speech';
 import { SpeechPlayButton } from './SpeechPlayButton';
@@ -21,6 +21,7 @@ interface KeyExpressionsTabProps {
   currentDate?: string;
   onDateChange?: (date: string) => void;
   onAddExpression: (item: Omit<KeyExpression, 'id' | 'createdAt'>) => void;
+  focusExpressionId?: string | null;
   onUpdateExpression: (id: string, updates: Partial<KeyExpression>) => void;
   onDeleteExpression: (id: string) => void;
 }
@@ -30,11 +31,22 @@ export const KeyExpressionsTab: React.FC<KeyExpressionsTabProps> = ({
   currentDate,
   onDateChange,
   onAddExpression,
+  focusExpressionId,
   onUpdateExpression,
   onDeleteExpression,
 }) => {
   const todayStr = getTodayDateString();
   const activeDate = currentDate || todayStr;
+
+  useEffect(() => {
+    if (!focusExpressionId) return;
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById(`expression-card-${focusExpressionId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [focusExpressionId, expressions]);
 
   // Add form state
   const [expressionInput, setExpressionInput] = useState('');
@@ -245,9 +257,22 @@ export const KeyExpressionsTab: React.FC<KeyExpressionsTabProps> = ({
 
               return (
                 <div
+                  id={`expression-card-${item.id}`}
                   key={item.id}
-                  className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs hover:border-slate-300 transition-all space-y-2.5 flex flex-col justify-between"
+                  className={`bg-white rounded-2xl p-4 border shadow-2xs transition-all space-y-2.5 flex flex-col justify-between ${
+                    focusExpressionId === item.id
+                      ? 'border-indigo-400 ring-2 ring-indigo-100'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
+                  {focusExpressionId === item.id && (
+                    <div className="flex items-start gap-2 rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-2 text-[11px] text-indigo-800">
+                      <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <span>
+                        AI에서 저장한 표현이에요. 발음을 듣고 따라 말한 뒤 아래 <b>+</b> 버튼으로 발화 횟수를 기록해보세요.
+                      </span>
+                    </div>
+                  )}
                   {isEditing ? (
                     /* Inline Edit Mode */
                     <div className="space-y-2 text-xs">

@@ -39,6 +39,7 @@ export function App() {
   const { user, markSaving, markSynced, markError } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('writing');
   const [currentDate, setCurrentDate] = useState<string>(getTodayDateString());
+  const [practiceExpressionId, setPracticeExpressionId] = useState<string | null>(null);
 
   // Core Data States with Tombstone Protection (Deleted items are NEVER revived)
   const [compositions, setCompositions] = useState<DailyComposition[]>(() => {
@@ -547,6 +548,7 @@ export function App() {
       markSynced();
     }
 
+    return newExpr;
   };
 
   const handleUpdateExpression = async (id: string, updates: Partial<KeyExpression>) => {
@@ -741,6 +743,7 @@ export function App() {
             currentDate={currentDate}
             onDateChange={setCurrentDate}
             onAddExpression={handleAddExpression}
+            focusExpressionId={practiceExpressionId}
             onUpdateExpression={handleUpdateExpression}
             onDeleteExpression={handleDeleteExpression}
           />
@@ -750,6 +753,11 @@ export function App() {
           <AiTutorTab
             currentDate={currentDate}
             onAddExpression={handleAddExpression}
+            onStartPractice={(expression) => {
+              setCurrentDate(expression.date);
+              setPracticeExpressionId(expression.id);
+              setActiveTab('expressions');
+            }}
           />
         </div>
 

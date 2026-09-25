@@ -36,6 +36,13 @@ export interface KeyExpression {
   spokenCount?: number; // 내가 발화한 횟수
 }
 
+export interface AiTutorMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  createdAt: number;
+}
+
 export type ActiveTab = 'writing' | 'audio-shadowing' | 'expressions' | 'ai' | 'summary';
 
 export interface BackupData {
