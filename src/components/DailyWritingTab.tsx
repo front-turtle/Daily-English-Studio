@@ -4,6 +4,7 @@ import { playEnglishSpeech } from '../utils/speech';
 import { SpeechPlayButton } from './SpeechPlayButton';
 import { getTodayDateString } from '../data/initialData';
 import { useAuth } from '../context/AuthContext';
+import { reviewEnglishWriting } from '../lib/geminiReview';
 import {
   PenTool,
   Calendar,
@@ -15,6 +16,7 @@ import {
   Edit3,
   Plus,
   ArrowDown,
+  RefreshCw,
   X,
   Share2,
   Copy,
@@ -115,6 +117,7 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
   const [editingPolishId, setEditingPolishId] = useState<string | null>(null);
   const [polishInput, setPolishInput] = useState('');
   const [polishTipInput, setPolishTipInput] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -162,6 +165,24 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
     });
     setEditingPolishId(null);
     showToast('다듬은 표현이 저장되었습니다.');
+  };
+
+
+  const handleAiSuggestPolish = async (comp: DailyComposition) => {
+    setIsAiLoading(true);
+    try {
+      const review = await reviewEnglishWriting(comp.korean, comp.english);
+      setPolishInput(review.polishedSentence);
+      setPolishTipInput(review.tip);
+      showToast('Gemini 첨삭 결과를 불러왔습니다.');
+    } catch (err) {
+      console.error('Gemini writing review error:', err);
+      alert(
+        'Gemini 첨삭을 불러오지 못했습니다. Firebase AI Logic 설정이 완료되었는지 확인한 뒤 다시 시도해주세요.'
+      );
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
 
@@ -483,6 +504,20 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
                           <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                           다듬은 표현(개선문) 입력
                         </span>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAiSuggestPolish(comp)}
+                          disabled={isAiLoading}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-semibold text-[11px] transition-colors disabled:opacity-50 disabled:cursor-wait cursor-pointer"
+                        >
+                          {isAiLoading ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3 h-3" />
+                          )}
+                          <span>{isAiLoading ? 'Gemini 첨삭 중...' : 'Gemini 추천받기'}</span>
+                        </button>
                       </div>
 
                       <textarea
