@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, Send, Sparkles, Trash2, User, BookmarkPlus, Check, X } from 'lucide-react';
 import { createEnglishTutorChat, TutorHistoryItem } from '../lib/geminiTutor';
-import { AiAiTutorMessage, KeyExpression } from '../types';
+import { AiTutorMessage, KeyExpression } from '../types';
 import { useAuth } from '../context/AuthContext';
 import {
-  clearAiAiTutorMessagesFromFirestore,
-  saveAiAiTutorMessagesToFirestore,
-  subscribeToAiAiTutorMessages,
+  clearAiTutorMessagesFromFirestore,
+  saveAiTutorMessagesToFirestore,
+  subscribeToAiTutorMessages,
 } from '../lib/firestoreService';
 
 interface AiTutorTabProps {
