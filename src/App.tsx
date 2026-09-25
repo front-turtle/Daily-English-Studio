@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DailyComposition, KeyExpression, AudioItem, ActiveTab, BackupData } from './types';
 import {
   INITIAL_COMPOSITIONS,
@@ -29,6 +29,10 @@ import {
   deleteExpressionFromFirestore,
   checkAndInitializeUserData,
 } from './lib/firestoreService';
+
+// Keep each source/recording small enough that one Firestore document stays safely below 1 MiB.
+// 400k base64 characters is roughly 300 KB of binary audio. Two clips + metadata remain under the document limit.
+const MAX_SYNC_AUDIO_BASE64_CHARS = 400_000;
 
 export function App() {
   const { user, markSaving, markSynced, markError } = useAuth();
@@ -221,56 +225,6 @@ export function App() {
     localStorage.setItem('key_expressions_v2', JSON.stringify(expressions));
   }, [expressions]);
 
-  // Load from server on mount for cross-device synchronization (when not logged in)
-  useEffect(() => {
-    if (user) return; // If logged in, Firestore is the authoritative source
-    const loadServerData = async () => {
-      try {
-        const [compRes, audioRes, exprRes] = await Promise.all([
-          fetch('/api/compositions').catch(() => null),
-          fetch('/api/audio/list').catch(() => null),
-          fetch('/api/expressions').catch(() => null),
-        ]);
-
-        let deletedExprIds = new Set<string>();
-        let deletedCompIds = new Set<string>();
-        let deletedAudioIds = new Set<string>();
-        try {
-          deletedExprIds = new Set(JSON.parse(localStorage.getItem('deleted_expression_ids_v2') || '[]'));
-          deletedCompIds = new Set(JSON.parse(localStorage.getItem('deleted_composition_ids_v2') || '[]'));
-          deletedAudioIds = new Set(JSON.parse(localStorage.getItem('deleted_audio_ids_v2') || '[]'));
-        } catch {}
-
-        if (compRes && compRes.ok) {
-          const comps = await compRes.json();
-          if (Array.isArray(comps)) {
-            const filtered = comps.filter((c: DailyComposition) => !deletedCompIds.has(c.id));
-            setCompositions(filtered);
-          }
-        }
-
-        if (audioRes && audioRes.ok) {
-          const audios = await audioRes.json();
-          if (Array.isArray(audios)) {
-            const filtered = audios.filter((a: AudioItem) => !deletedAudioIds.has(a.id));
-            setAudioItems(filtered);
-          }
-        }
-
-        if (exprRes && exprRes.ok) {
-          const exprs = await exprRes.json();
-          if (Array.isArray(exprs)) {
-            const filtered = exprs.filter((e: KeyExpression) => !deletedExprIds.has(e.id));
-            setExpressions(filtered);
-          }
-        }
-      } catch (err) {
-        console.warn('Initial server sync:', err);
-      }
-    };
-
-    loadServerData();
-  }, [user]);
 
   // --- COMPOSITION HANDLERS (Tab 1) ---
   const handleSaveComposition = async (
@@ -299,16 +253,6 @@ export function App() {
       markSynced();
     }
 
-    // Send to server
-    try {
-      await fetch('/api/compositions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newComp),
-      });
-    } catch (err) {
-      console.warn('Server composition save error:', err);
-    }
   };
 
   const handleUpdateComposition = async (id: string, updates: Partial<DailyComposition>) => {
@@ -328,15 +272,6 @@ export function App() {
       markSynced();
     }
 
-    try {
-      await fetch(`/api/compositions/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-    } catch (err) {
-      console.warn('Server composition update error:', err);
-    }
   };
 
   const handleDeleteComposition = async (id: string) => {
@@ -363,16 +298,10 @@ export function App() {
       return updated;
     });
 
-    // 3. Persistent deletion across remote Firestore & server backend
-    const firestorePromise = deleteCompositionFromFirestore(user?.uid, id).catch((err) => {
+    // 3. Persist deletion to Firestore (localStorage remains the offline fallback)
+    await deleteCompositionFromFirestore(user?.uid, id).catch((err) => {
       console.warn('Firestore composition delete error:', err);
     });
-
-    const serverPromise = fetch(`/api/compositions/${id}`, { method: 'DELETE' }).catch((err) => {
-      console.warn('Server composition delete error:', err);
-    });
-
-    await Promise.allSettled([firestorePromise, serverPromise]);
     markSynced();
   };
 
@@ -385,29 +314,43 @@ export function App() {
     transcript?: string
   ) => {
     markSaving();
+
+    if (fileBase64.length > MAX_SYNC_AUDIO_BASE64_CHARS) {
+      markError();
+      throw new Error('음성 파일이 너무 큽니다. 약 300KB 이하의 짧은 학습 음성을 사용해주세요.');
+    }
+
+    const now = Date.now();
     const cleanTranscript = transcript ? transcript.trim() : '';
-    const res = await fetch('/api/audio/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, fileName, fileBase64, date, transcript: cleanTranscript }),
-    });
-    if (!res.ok) throw new Error('업로드 실패');
-    const createdItem: AudioItem = await res.json();
-    const fullItem: AudioItem = {
-      ...createdItem,
+    const createdItem: AudioItem = {
+      id: `audio-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      title: title.trim() || fileName.replace(/\.[^/.]+$/, ''),
+      fileName,
+      // The playable source is stored directly in Firestore/local cache; no server URL is required.
+      audioUrl: '',
       audioBase64: fileBase64,
-      transcript: cleanTranscript || createdItem.transcript || '',
+      myRecordingUrl: null,
+      myRecordingBase64: null,
+      myRecordingDuration: null,
+      date: date || currentDate,
+      transcript: cleanTranscript,
+      createdAt: now,
+      updatedAt: now,
     };
-    setAudioItems((prev) => [fullItem, ...prev]);
+
+    setAudioItems((prev) => [createdItem, ...prev]);
 
     if (user) {
-      saveAudioItemToFirestore(user.uid, fullItem)
-        .then(() => markSynced())
-        .catch((err) => {
-          console.warn('Firestore audio save error:', err);
-          markSynced();
-        });
+      try {
+        await saveAudioItemToFirestore(user.uid, createdItem);
+        markSynced();
+      } catch (err) {
+        console.warn('Firestore audio save error:', err);
+        markError();
+        throw err;
+      }
     } else {
+      // Local-only mode still works on the current device; sign in for cross-device sync.
       markSynced();
     }
   };
@@ -423,15 +366,6 @@ export function App() {
       return updated;
     });
 
-    try {
-      await fetch(`/api/audio/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: cleanTranscript }),
-      });
-    } catch (err) {
-      console.warn('Server audio transcript update error:', err);
-    }
 
     if (user) {
       try {
@@ -452,23 +386,28 @@ export function App() {
   const handleSaveRecording = async (
     id: string,
     recordingBase64: string,
-    mimeType: string,
+    _mimeType: string,
     duration?: number
   ) => {
     markSaving();
 
-    const targetItem = audioItems.find((a) => a.id === id);
+    if (recordingBase64.length > MAX_SYNC_AUDIO_BASE64_CHARS) {
+      markError();
+      throw new Error('녹음 파일이 너무 큽니다. 녹음을 조금 짧게 나눠서 저장해주세요.');
+    }
 
-    // 1. Optimistically update local state & localStorage immediately so recording is never lost
+    const updatedAt = Date.now();
+
+    // Update the current device immediately.
     setAudioItems((prev) => {
       const updated = prev.map((a) =>
         a.id === id
           ? {
               ...a,
-              myRecordingUrl: a.myRecordingUrl || recordingBase64,
+              myRecordingUrl: null,
               myRecordingBase64: recordingBase64,
               myRecordingDuration: duration || a.myRecordingDuration,
-              updatedAt: Date.now(),
+              updatedAt,
             }
           : a
       );
@@ -478,71 +417,19 @@ export function App() {
       return updated;
     });
 
-    let serverRecordingUrl = '';
-
-    // 2. Persist to server disk storage with timeout so it never hangs
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-      const res = await fetch(`/api/audio/${id}/recording`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recordingBase64,
-          mimeType,
-          duration,
-          title: targetItem?.title,
-          fileName: targetItem?.fileName,
-          date: targetItem?.date,
-          audioUrl: targetItem?.audioUrl,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const updatedItem = await res.json();
-        serverRecordingUrl = updatedItem.myRecordingUrl || '';
-        setAudioItems((prev) => {
-          const updated = prev.map((a) =>
-            a.id === id
-              ? {
-                  ...a,
-                  myRecordingUrl: serverRecordingUrl || a.myRecordingUrl,
-                  myRecordingBase64: recordingBase64,
-                  myRecordingDuration: duration || a.myRecordingDuration,
-                  updatedAt: Date.now(),
-                }
-              : a
-          );
-          try {
-            localStorage.setItem('audio_items_v2', JSON.stringify(updated));
-          } catch {}
-          return updated;
-        });
-      } else {
-        console.warn('Server recording save returned non-ok:', res.status);
-      }
-    } catch (netErr) {
-      console.warn('Server recording save network error:', netErr);
-    }
-
-    // 3. Persist to Firestore with document size guard (< 650KB)
     if (user) {
       try {
-        const firestoreUpdates: Partial<AudioItem> = {
-          myRecordingUrl: serverRecordingUrl || null,
+        await updateAudioItemInFirestore(id, {
+          myRecordingUrl: null,
+          myRecordingBase64: recordingBase64,
           myRecordingDuration: duration || null,
-          updatedAt: Date.now(),
-        };
-        if (recordingBase64 && recordingBase64.length < 650000) {
-          firestoreUpdates.myRecordingBase64 = recordingBase64;
-        }
-        await updateAudioItemInFirestore(id, firestoreUpdates);
+          updatedAt,
+        });
         markSynced();
       } catch (err) {
         console.warn('Firestore audio recording save error:', err);
-        markSynced();
+        markError();
+        throw err;
       }
     } else {
       markSynced();
@@ -560,37 +447,9 @@ export function App() {
     }
   };
 
-  // Auto-upgrade legacy audio items missing audioBase64 by resolving from server
-  useEffect(() => {
-    if (!audioItems.length) return;
-
-    audioItems.forEach(async (item) => {
-      if (!item.audioBase64 && item.audioUrl) {
-        try {
-          const res = await fetch(
-            `/api/audio/resolve-base64?path=${encodeURIComponent(item.audioUrl)}&id=${encodeURIComponent(item.id)}`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (data?.base64) {
-              setAudioItems((prev) =>
-                prev.map((a) => (a.id === item.id ? { ...a, audioBase64: data.base64 } : a))
-              );
-              if (user) {
-                updateAudioItemInFirestore(item.id, { audioBase64: data.base64 }).catch(() => {});
-              }
-            }
-          }
-        } catch {
-          // Ignore background sync errors
-        }
-      }
-    });
-  }, [audioItems.length, user]);
 
   const handleDeleteRecording = async (id: string) => {
     markSaving();
-    await fetch(`/api/audio/${id}/recording`, { method: 'DELETE' });
     setAudioItems((prev) =>
       prev.map((a) =>
         a.id === id
@@ -636,15 +495,9 @@ export function App() {
       return updated;
     });
 
-    const firestorePromise = deleteAudioItemFromFirestore(user?.uid, id).catch((err) => {
+    await deleteAudioItemFromFirestore(user?.uid, id).catch((err) => {
       console.warn('Firestore audio item delete error:', err);
     });
-
-    const serverPromise = fetch(`/api/audio/${id}`, { method: 'DELETE' }).catch((err) => {
-      console.warn('Server audio delete error:', err);
-    });
-
-    await Promise.allSettled([firestorePromise, serverPromise]);
     markSynced();
   };
 
@@ -693,15 +546,6 @@ export function App() {
       markSynced();
     }
 
-    try {
-      await fetch('/api/expressions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newExpr),
-      });
-    } catch (err) {
-      console.warn('Expression save error:', err);
-    }
   };
 
   const handleUpdateExpression = async (id: string, updates: Partial<KeyExpression>) => {
@@ -724,15 +568,6 @@ export function App() {
       markSynced();
     }
 
-    try {
-      await fetch(`/api/expressions/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-    } catch (err) {
-      console.warn('Expression update error:', err);
-    }
   };
 
   const handleDeleteExpression = async (id: string) => {
@@ -759,16 +594,10 @@ export function App() {
       return updated;
     });
 
-    // 3. Persistent deletion across remote Firestore & server backend
-    const firestorePromise = deleteExpressionFromFirestore(user?.uid, id).catch((err) => {
+    // 3. Persist deletion to Firestore
+    await deleteExpressionFromFirestore(user?.uid, id).catch((err) => {
       console.warn('Firestore expression delete error:', err);
     });
-
-    const serverPromise = fetch(`/api/expressions/${id}`, { method: 'DELETE' }).catch((err) => {
-      console.warn('Server expression delete error:', err);
-    });
-
-    await Promise.allSettled([firestorePromise, serverPromise]);
     markSynced();
   };
 
