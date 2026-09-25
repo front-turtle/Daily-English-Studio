@@ -36,7 +36,7 @@ export interface KeyExpression {
   spokenCount?: number; // 내가 발화한 횟수
 }
 
-export type ActiveTab = 'writing' | 'audio-shadowing' | 'expressions' | 'summary';
+export type ActiveTab = 'writing' | 'audio-shadowing' | 'expressions' | 'ai' | 'summary';
 
 export interface BackupData {
   version: number;

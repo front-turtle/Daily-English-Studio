@@ -12,7 +12,8 @@ import { DailyWritingTab } from './components/DailyWritingTab';
 import { AudioShadowingTab } from './components/AudioShadowingTab';
 import { KeyExpressionsTab } from './components/KeyExpressionsTab';
 import { SummaryTab } from './components/SummaryTab';
-import { PenLine, Headphones, BookOpen, CalendarDays } from 'lucide-react';
+import { AiTutorTab } from './components/AiTutorTab';
+import { PenLine, Headphones, BookOpen, CalendarDays, Bot } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import {
   subscribeToCompositions,
@@ -693,7 +694,7 @@ export function App() {
       />
 
       {/* Diary-style Global Date Controller Bar with Arrow Buttons & Dropdown Calendar (Hidden on Summary tab per user request) */}
-      {activeTab !== 'summary' && (
+      {activeTab !== 'summary' && activeTab !== 'ai' && (
         <DiaryDateBar
           currentDate={currentDate}
           onDateChange={setCurrentDate}
@@ -743,6 +744,10 @@ export function App() {
           />
         </div>
 
+        <div className={activeTab === 'ai' ? 'block' : 'hidden'}>
+          <AiTutorTab />
+        </div>
+
         <div className={activeTab === 'summary' ? 'block' : 'hidden'}>
           <SummaryTab
             compositions={compositions}
@@ -759,7 +764,7 @@ export function App() {
 
       {/* Primary Bottom Navigation Bar (Unified across all screen sizes) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg py-2 px-3">
-        <div className="max-w-md sm:max-w-lg mx-auto flex items-center justify-around gap-1">
+        <div className="max-w-xl sm:max-w-2xl mx-auto flex items-center justify-around gap-0.5">
           {/* Tab 1: 매일 영작 */}
           <button
             type="button"
@@ -829,7 +834,21 @@ export function App() {
             )}
           </button>
 
-          {/* Tab 4: 모아보기 */}
+          {/* Tab 4: AI 튜터 */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('ai')}
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-2 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+              activeTab === 'ai'
+                ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+            }`}
+          >
+            <Bot className="w-4 h-4 shrink-0" />
+            <span className="text-[11px] sm:text-xs">AI 튜터</span>
+          </button>
+
+          {/* Tab 5: 모아보기 */}
           <button
             type="button"
             onClick={() => setActiveTab('summary')}
