@@ -12,6 +12,6 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-// Configure firestore database using the databaseId from config if provided
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
+// Use the default Firestore database in the new project.
+export const db = getFirestore(app);
 export default app;
