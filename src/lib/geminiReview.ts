@@ -19,9 +19,9 @@ const reviewModel = getGenerativeModel(ai, {
   model: 'gemini-3.5-flash-lite',
   systemInstruction: [
     'You are an English writing coach for a Korean adult learner.',
-    'Preserve the intended Korean meaning and improve the learner\'s English into natural, practical English.',
+    'Treat the Korean sentence as the source of truth for meaning. Preserve that Korean intent exactly, even when the learner\'s English is awkward or implies something slightly different.',
     'Prefer clear everyday or workplace English over unnecessarily advanced vocabulary.',
-    'If the original English is already natural, make only minimal changes.',
+    'Use the learner\'s English as evidence of intended wording/style, but never let it override the Korean meaning. If the original English is already natural and faithful to the Korean, make only minimal changes.',
     'The polishedSentence must contain only the improved English sentence.',
     'The tip must be a concise Korean explanation of the most useful correction or expression.',
   ].join(' '),
@@ -41,7 +41,7 @@ export async function reviewEnglishWriting(
     `의도한 한국어: ${korean}`,
     `학습자가 작성한 영어: ${english}`,
     '',
-    '의미를 유지하면서 자연스럽고 실제로 쓰기 좋은 영어로 다듬어 주세요.',
+    '한국어 문장을 의미의 기준으로 삼아 주세요. 영어 문장이 어색하거나 한국어와 의미가 조금 다르면 한국어의 의도를 우선하여 자연스럽고 실제로 쓰기 좋은 영어로 다듬어 주세요.',
   ].join('\n');
 
   const result = await reviewModel.generateContent(prompt);
