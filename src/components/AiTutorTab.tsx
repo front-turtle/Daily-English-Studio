@@ -1,11 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, Send, Sparkles, Trash2, User } from 'lucide-react';
+import { Bot, Send, Sparkles, Trash2, User, BookmarkPlus, Check, X } from 'lucide-react';
 import { createEnglishTutorChat, TutorHistoryItem } from '../lib/geminiTutor';
+import { KeyExpression } from '../types';
 
 interface TutorMessage {
   id: string;
   role: 'user' | 'model';
   text: string;
+}
+
+interface AiTutorTabProps {
+  currentDate: string;
+  onAddExpression: (item: Omit<KeyExpression, 'id' | 'createdAt'>) => void;
 }
 
 const STORAGE_KEY = 'ai_tutor_messages_v1';
@@ -22,12 +28,121 @@ function loadSavedMessages(): TutorMessage[] {
   }
 }
 
-export const AiTutorTab: React.FC = () => {
+function renderInlineMarkdown(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\`[^\`]+\`)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-bold text-slate-900">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={index} className="px-1 py-0.5 rounded bg-white/80 border border-slate-200 font-mono text-[0.95em]">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
+}
+
+const MarkdownAnswer: React.FC<{ text: string }> = ({ text }) => {
+  const lines = text.split('\n');
+
+  return (
+    <div className="space-y-1.5">
+      {lines.map((rawLine, index) => {
+        const line = rawLine.trimEnd();
+        const trimmed = line.trim();
+
+        if (!trimmed) return <div key={index} className="h-1" />;
+        if (/^---+$/.test(trimmed)) return <hr key={index} className="my-2 border-slate-300/70" />;
+
+        const h3 = trimmed.match(/^###\s+(.+)/);
+        if (h3) {
+          return (
+            <h3 key={index} className="font-bold text-slate-900 pt-1.5">
+              {renderInlineMarkdown(h3[1])}
+            </h3>
+          );
+        }
+
+        const h2 = trimmed.match(/^##\s+(.+)/);
+        if (h2) {
+          return (
+            <h2 key={index} className="font-bold text-sm sm:text-base text-slate-900 pt-1.5">
+              {renderInlineMarkdown(h2[1])}
+            </h2>
+          );
+        }
+
+        const quote = trimmed.match(/^>\s?(.*)/);
+        if (quote) {
+          return (
+            <div key={index} className="border-l-2 border-indigo-300 pl-2.5 py-0.5 text-slate-700 bg-white/40 rounded-r">
+              {renderInlineMarkdown(quote[1])}
+            </div>
+          );
+        }
+
+        const bullet = trimmed.match(/^[-*]\s+(.+)/);
+        if (bullet) {
+          return (
+            <div key={index} className="flex items-start gap-2 pl-1">
+              <span className="text-indigo-500 mt-[1px]">•</span>
+              <span>{renderInlineMarkdown(bullet[1])}</span>
+            </div>
+          );
+        }
+
+        const numbered = trimmed.match(/^(\d+)\.\s+(.+)/);
+        if (numbered) {
+          return (
+            <div key={index} className="flex items-start gap-2 pl-1">
+              <span className="font-semibold text-indigo-600 shrink-0">{numbered[1]}.</span>
+              <span>{renderInlineMarkdown(numbered[2])}</span>
+            </div>
+          );
+        }
+
+        return <p key={index}>{renderInlineMarkdown(trimmed)}</p>;
+      })}
+    </div>
+  );
+};
+
+function extractEnglishCandidate(text: string) {
+  const cleaned = text
+    .replace(/\*\*/g, '')
+    .replace(/^s*[>#*-]+\s*/gm, '')
+    .replace(/^\s*\d+\.\s*/gm, '');
+
+  const candidates = cleaned
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 4 && line.length <= 180)
+    .filter((line) => /[A-Za-z]{2,}/.test(line));
+
+  const englishHeavy = candidates.find((line) => {
+    const latin = (line.match(/[A-Za-z]/g) || []).length;
+    const korean = (line.match(/[가-힣]/g) || []).length;
+    return latin >= 8 && latin > korean * 2;
+  });
+
+  return englishHeavy || '';
+}
+
+export const AiTutorTab: React.FC<AiTutorTabProps> = ({ currentDate, onAddExpression }) => {
   const [messages, setMessages] = useState<TutorMessage[]>(loadSavedMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const chatRef = useRef<ReturnType<typeof createEnglishTutorChat> | null>(null);
+
+  const [saveTargetId, setSaveTargetId] = useState<string | null>(null);
+  const [saveExpression, setSaveExpression] = useState('');
+  const [saveMeaning, setSaveMeaning] = useState('');
+  const [saveMemo, setSaveMemo] = useState('');
+  const [savedMessageId, setSavedMessageId] = useState<string | null>(null);
 
   const buildChat = (source: TutorMessage[] = messages) => {
     const history: TutorHistoryItem[] = source.map((message) => ({
@@ -92,9 +207,44 @@ export const AiTutorTab: React.FC = () => {
     setMessages([]);
     setInput('');
     chatRef.current = null;
+    setSaveTargetId(null);
+    setSavedMessageId(null);
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
+  };
+
+  const openExpressionSave = (message: TutorMessage) => {
+    const selected = typeof window !== 'undefined' ? window.getSelection()?.toString().trim() || '' : '';
+    const candidate =
+      selected && /[A-Za-z]{2,}/.test(selected) && selected.length <= 220
+        ? selected
+        : extractEnglishCandidate(message.text);
+
+    setSaveTargetId(message.id);
+    setSaveExpression(candidate);
+    setSaveMeaning('');
+    setSaveMemo('AI 튜터 답변에서 저장');
+  };
+
+  const saveToExpressions = (messageId: string) => {
+    if (!saveExpression.trim() || !saveMeaning.trim()) {
+      alert('저장할 영어 표현과 한글 뜻을 입력해주세요.');
+      return;
+    }
+
+    onAddExpression({
+      expression: saveExpression.trim(),
+      meaning: saveMeaning.trim(),
+      memo: saveMemo.trim() || 'AI 튜터 답변에서 저장',
+      favorite: false,
+      date: currentDate,
+      spokenCount: 0,
+    });
+
+    setSaveTargetId(null);
+    setSavedMessageId(messageId);
+    setTimeout(() => setSavedMessageId(null), 2500);
   };
 
   const quickPrompts = [
@@ -168,15 +318,86 @@ export const AiTutorTab: React.FC = () => {
                     <Bot className="w-4 h-4" />
                   </div>
                 )}
-                <div
-                  className={`max-w-[86%] sm:max-w-[78%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words ${
-                    message.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-br-md'
-                      : 'bg-slate-100 text-slate-800 rounded-bl-md'
-                  }`}
-                >
-                  {message.text}
+
+                <div className={message.role === 'user' ? 'max-w-[86%] sm:max-w-[78%]' : 'max-w-[90%] sm:max-w-[82%]'}>
+                  <div
+                    className={`rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed break-words ${
+                      message.role === 'user'
+                        ? 'bg-indigo-600 text-white rounded-br-md whitespace-pre-wrap'
+                        : 'bg-slate-100 text-slate-800 rounded-bl-md'
+                    }`}
+                  >
+                    {message.role === 'model' ? <MarkdownAnswer text={message.text} /> : message.text}
+                  </div>
+
+                  {message.role === 'model' && !message.id.startsWith('error-') && (
+                    <div className="mt-1.5 pl-1">
+                      <button
+                        type="button"
+                        onClick={() => openExpressionSave(message)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded-lg transition-colors"
+                        title="답변에서 마음에 드는 영어를 주요 표현에 저장"
+                      >
+                        {savedMessageId === message.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <BookmarkPlus className="w-3.5 h-3.5" />
+                        )}
+                        <span>{savedMessageId === message.id ? '저장됨' : '주요 표현에 저장'}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {saveTargetId === message.id && (
+                    <div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50/40 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-indigo-800">주요 표현으로 저장</span>
+                        <button
+                          type="button"
+                          onClick={() => setSaveTargetId(null)}
+                          className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-white"
+                          title="닫기"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={saveExpression}
+                        onChange={(e) => setSaveExpression(e.target.value)}
+                        placeholder="영어 표현/문장"
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs sm:text-sm outline-none focus:border-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={saveMeaning}
+                        onChange={(e) => setSaveMeaning(e.target.value)}
+                        placeholder="한글 뜻"
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs outline-none focus:border-indigo-500"
+                      />
+                      <input
+                        type="text"
+                        value={saveMemo}
+                        onChange={(e) => setSaveMemo(e.target.value)}
+                        placeholder="메모 (선택)"
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-[11px] outline-none focus:border-indigo-500"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => saveToExpressions(message.id)}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+                        >
+                          저장
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        PC에서는 답변의 영어 문장을 먼저 드래그해 선택한 뒤 저장 버튼을 누르면 선택한 문장이 자동 입력됩니다.
+                      </p>
+                    </div>
+                  )}
                 </div>
+
                 {message.role === 'user' && (
                   <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5">
                     <User className="w-4 h-4" />

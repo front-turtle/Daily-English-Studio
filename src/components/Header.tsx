@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Download } from 'lucide-react';
+import { User, Download, Bot } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { DailyComposition, AudioItem, KeyExpression, BackupData } from '../types';
 import { AccountModal } from './AccountModal';
@@ -8,6 +8,8 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface HeaderProps {
   onLogoClick?: () => void;
+  onAiTutorClick?: () => void;
+  isAiTutorActive?: boolean;
   compositions: DailyComposition[];
   audioItems: AudioItem[];
   expressions: KeyExpression[];
@@ -16,6 +18,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   onLogoClick,
+  onAiTutorClick,
+  isAiTutorActive = false,
   compositions,
   audioItems,
   expressions,
@@ -61,8 +65,21 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: PWA Install + Real-time Sync Status (Green) + Account Modal Trigger */}
+        {/* Right: AI Tutor + PWA Install + Real-time Sync Status + Account */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
+          <button
+            type="button"
+            onClick={onAiTutorClick}
+            className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95 ${
+              isAiTutorActive
+                ? 'bg-indigo-600 border-indigo-600 text-white'
+                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+            }`}
+            title="AI 영어 튜터 열기"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">AI 튜터</span>
+          </button>
           {/* PWA Install Button (Visible on mobile & desktop until installed) */}
           {!isInstalled && (
             <button
