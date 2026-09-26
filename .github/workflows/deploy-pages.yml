@@ -38,7 +38,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Verify owner isolation and cross-device transactions
-        run: npx --yes firebase-tools emulators:exec --only firestore --project demo-smart-review "node --test tests/firestore-rules.integration.mjs"
+        run: npx --yes firebase-tools emulators:exec --only firestore --project demo-smart-review "node --experimental-strip-types --test tests/firestore-rules.integration.mjs"
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

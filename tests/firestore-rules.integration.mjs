@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, deleteDoc, runTransaction } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { startReviewInDatabase, saveReviewAnswerInDatabase } from '../src/lib/smartReviewRepository.ts';
 
 let environment;
 const now = Date.now();
@@ -41,19 +42,11 @@ test('cannot complete empty sessions, alter questions, or backfill an expired da
 test('two devices racing to start or answer preserve first committed state', async () => {
   const first = environment.authenticatedContext('owner').firestore();
   const second = environment.authenticatedContext('owner').firestore();
-  const start = db => runTransaction(db, async tx => {
-    const r = doc(db, 'users', 'owner', 'smartReviews', date);
-    const snap = await tx.get(r);
-    if (!snap.exists()) tx.set(r, base);
-  });
-  await Promise.all([start(first), start(second)]);
-  const save = (db, correct) => runTransaction(db, async tx => {
-    const r = doc(db, 'users', 'owner', 'smartReviews', date);
-    const snapshot = await tx.get(r), session = snapshot.data();
-    if (!session.answers.q0) tx.set(r, { ...session, answers: { q0: { ...result, correct } }, completedAt: now });
-  });
-  await Promise.all([save(first, true), save(second, false)]);
+  const starts = await Promise.all([startReviewInDatabase(first, 'owner', base), startReviewInDatabase(second, 'owner', { ...base, createdAt: now + 1 })]);
+  assert.deepEqual(starts[0].questions, starts[1].questions);
+  const saves = await Promise.all([saveReviewAnswerInDatabase(first, 'owner', date, 'q0', result), saveReviewAnswerInDatabase(second, 'owner', date, 'q0', { ...result, correct: false })]);
+  assert.deepEqual(saves[0].answers, saves[1].answers);
   const final = (await getDoc(ref('owner'))).data();
   assert.equal(Object.keys(final.answers).length, 1);
-  assert.equal(final.completedAt, now);
+  assert.ok(final.completedAt >= now);
 });
