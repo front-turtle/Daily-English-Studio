@@ -14,7 +14,8 @@ test('desktop/mobile center tab, yearly journey and temporary pronunciation dial
   await expect(page.getByText('생명의 지구', { exact: true })).toBeVisible();
   for (const width of [1280, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(el => { const r = el.getBoundingClientRect(); return r.width && r.right > innerWidth + 1; }).map(el => ({ tag: el.tagName, cls: el.className, text: el.textContent?.slice(0, 50) })));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), JSON.stringify({ width, overflow })).toBe(true);
     const center = await page.locator('nav button').nth(2).boundingBox();
     expect(Math.abs(center.x + center.width / 2 - width / 2)).toBeLessThan(3);
   }

@@ -52,14 +52,14 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Left: Logo & Title (Clicking returns to top/writing) */}
         <div
           onClick={onLogoClick}
-          className="flex items-center gap-2 cursor-pointer select-none"
+          className="flex min-w-0 items-center gap-2 cursor-pointer select-none"
           title="Daily English Studio"
         >
-          <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
+          <div className="w-8 h-8 shrink-0 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
             EN
           </div>
           <div>
-            <span className="font-bold text-base sm:text-lg text-slate-900 tracking-tight">
+            <span className="font-bold text-sm sm:text-lg text-slate-900 tracking-tight whitespace-nowrap">
               Daily English
             </span>
           </div>
@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
               title="스마트폰, 태블릿, PC에 앱으로 설치하기"
             >
               <Download className="w-3.5 h-3.5 text-indigo-600" />
-              <span>앱 설치</span>
+              <span className="hidden sm:inline">앱 설치</span>
             </button>
           )}
 
