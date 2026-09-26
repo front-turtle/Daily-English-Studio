@@ -33,12 +33,13 @@ function getDB(): Promise<IDBDatabase> {
       };
 
       request.onerror = () => {
+        dbPromise = null;
         reject(request.error);
       };
 
       request.onblocked = () => {
-        console.warn('IndexedDB open blocked');
-        resolve(request.result);
+        dbPromise = null;
+        reject(new Error('다른 앱 창을 닫고 다시 저장해 주세요.'));
       };
     } catch (e) {
       reject(e);
@@ -51,37 +52,25 @@ function getDB(): Promise<IDBDatabase> {
 /**
  * Save audio Blob directly to IndexedDB with safety timeout
  */
-export async function saveAudioToStorage(id: string, blob: Blob): Promise<void> {
+export async function saveAudioToStorage(id: string, blob: Blob, strict = false): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const db = await Promise.race([
-      getDB(),
-      new Promise<null>((_, reject) => setTimeout(() => reject(new Error('IDB timeout')), 2000)),
+    await Promise.race([
+      (async () => {
+        const db = await getDB();
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.oncomplete = () => { revokeAudioBlobUrl(id); resolve(); };
+          tx.onerror = tx.onabort = () => reject(tx.error || new Error('음성 보관 공간에 저장하지 못했습니다.'));
+          tx.objectStore(STORE_NAME).put(blob, id);
+        });
+      })(),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('기기 저장 공간이 부족하거나 응답하지 않습니다. 녹음 파일을 내려받아 보관해 주세요.')), 10000); }),
     ]);
-    if (!db) return;
-
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(), 2500); // Never hang caller
-      try {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.oncomplete = () => {
-          clearTimeout(timeout);
-          resolve();
-        };
-        tx.onerror = tx.onabort = () => {
-          clearTimeout(timeout);
-          resolve(); // Resolve anyway so caller flow is never halted
-        };
-        const store = tx.objectStore(STORE_NAME);
-        store.put(blob, id);
-      } catch (txErr) {
-        clearTimeout(timeout);
-        console.warn('IDB put error:', txErr);
-        resolve();
-      }
-    });
-  } catch (err) {
-    console.warn('IndexedDB save warning:', err);
-  }
+  } catch (error) {
+    if (strict) throw error;
+    console.warn('IndexedDB save warning:', error);
+  } finally { clearTimeout(timer); }
 }
 
 /**
@@ -141,6 +130,7 @@ export function normalizeAudioMimeType(mime?: string, fileNameOrUrl?: string): s
   if (lowerMime.includes('webm') || lowerPath.endsWith('.webm')) {
     return 'audio/webm';
   }
+  if (lowerMime.includes('ogg') || lowerPath.endsWith('.ogg')) return 'audio/ogg';
   if (lowerMime.includes('aac') || lowerPath.endsWith('.aac')) {
     return 'audio/aac';
   }
@@ -211,9 +201,9 @@ export function blobToBase64(blob: Blob, timeoutMs = 8000): Promise<string> {
     }, timeoutMs);
 
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onload = () => {
       clearTimeout(timer);
-      resolve(reader.result as string);
+      if (typeof reader.result === 'string') resolve(reader.result); else reject(new Error('녹음 변환에 실패했습니다.'));
     };
     reader.onerror = (e) => {
       clearTimeout(timer);

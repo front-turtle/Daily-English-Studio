@@ -243,6 +243,7 @@ export const saveAudioItemToFirestore = async (userId: string, audio: AudioItem)
     audioBase64: audio.audioBase64 || '',
     myRecordingUrl: audio.myRecordingUrl || null,
     myRecordingBase64: audio.myRecordingBase64 || null,
+    myRecordingDuration: audio.myRecordingDuration || null,
     date: audio.date,
     createdAt: audio.createdAt || Date.now(),
     updatedAt: audio.updatedAt || Date.now(),

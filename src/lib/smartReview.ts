@@ -40,12 +40,44 @@ export function isComplete(session?: ReviewSession): boolean {
 }
 export const GROWTH_STAGES = [
   { days: 0, name: '새싹', emoji: '🌱' },
+  { days: 3, name: '두 잎 새싹', emoji: '🌱' },
   { days: 7, name: '어린나무', emoji: '🌿' },
   { days: 14, name: '큰나무', emoji: '🌳' },
+  { days: 21, name: '작은 숲', emoji: '🌳' },
   { days: 30, name: '숲', emoji: '🌲' },
+  { days: 45, name: '울창한 숲', emoji: '🌲' },
   { days: 60, name: '큰숲', emoji: '🌲🌳' },
-  { days: 100, name: '지구', emoji: '🌍' },
+  { days: 90, name: '오래된 원시림', emoji: '🌳' },
+  { days: 120, name: '열대우림', emoji: '🌴' },
+  { days: 150, name: '아마존', emoji: '🦜' },
+  { days: 180, name: '거대한 아마존', emoji: '🌴' },
+  { days: 210, name: '생명의 낙원', emoji: '🦋' },
+  { days: 240, name: '초록 대륙', emoji: '🌏' },
+  { days: 300, name: '푸른 행성', emoji: '🌎' },
+  { days: 365, name: '생명의 지구', emoji: '🌍' },
 ] as const;
+
+export const FOREST_ANIMALS = [
+  { days: 3, name: '나비', emoji: '🦋' },
+  { days: 7, name: '꿀벌', emoji: '🐝' },
+  { days: 14, name: '새', emoji: '🐦' },
+  { days: 21, name: '토끼', emoji: '🐇' },
+  { days: 30, name: '다람쥐', emoji: '🐿️' },
+  { days: 45, name: '여우', emoji: '🦊' },
+  { days: 60, name: '사슴', emoji: '🦌' },
+  { days: 90, name: '부엉이', emoji: '🦉' },
+  { days: 120, name: '앵무새', emoji: '🦜' },
+  { days: 150, name: '원숭이', emoji: '🐒' },
+  { days: 180, name: '재규어', emoji: '🐆' },
+  { days: 210, name: '코끼리', emoji: '🐘' },
+  { days: 240, name: '호랑이', emoji: '🐅' },
+  { days: 300, name: '독수리', emoji: '🦅' },
+  { days: 365, name: '고래', emoji: '🐋' },
+] as const;
+
+export function forestLife(streak: number) {
+  return { animals: FOREST_ANIMALS.filter(a => a.days <= streak), nextAnimal: FOREST_ANIMALS.find(a => a.days > streak) };
+}
 
 export function reviewStats(sessions: ReviewSession[], today: string) {
   const dates = [...new Set(sessions.filter(s => s.date <= today && isComplete(s)).map(s => s.date))].sort();

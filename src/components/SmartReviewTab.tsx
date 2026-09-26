@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ChevronRight, Download, Leaf, Loader2 } from 'lucide-react';
 import type { DailyComposition, KeyExpression } from '../types';
-import { createReviewSession, GROWTH_STAGES, isComplete, reviewStats, shiftReviewDate } from '../lib/smartReview';
+import { createReviewSession, forestLife, GROWTH_STAGES, isComplete, reviewStats, shiftReviewDate } from '../lib/smartReview';
 import type { ReviewAnswer, ReviewQuestion, ReviewSession } from '../lib/smartReview';
 import { saveReviewAnswer, startReview } from '../lib/smartReviewService';
 import { gradeSmartReview } from '../lib/gradeSmartReview';
@@ -21,13 +21,23 @@ interface Props {
 const sourceLabel = { writing: '내 영작', polished: 'AI 첨삭 · 다듬은 표현', expression: '주요 표현' };
 const button = 'rounded-xl px-4 py-3 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed';
 
-function GrowthScene({ level }: { level: number }) {
-  return <div className="relative h-36 sm:h-44 overflow-hidden rounded-2xl bg-gradient-to-b from-sky-100 via-emerald-50 to-emerald-100" role="img" aria-label={`${GROWTH_STAGES[level].name} 성장 풍경`}>
-    <div className="absolute right-8 top-5 h-9 w-9 rounded-full bg-amber-200 shadow-lg shadow-amber-100" />
-    <div className="absolute bottom-0 inset-x-0 h-10 bg-emerald-200/60 rounded-t-[50%]" />
-    <div className="absolute inset-0 flex items-end justify-center gap-1 pb-5 select-none" aria-hidden="true">
-      {level === 0 ? <span className="text-6xl">🌱</span> : level === 1 ? <span className="text-7xl">🌿</span> : level === 2 ? <span className="text-8xl">🌳</span> : level === 5 ? <span className="text-8xl">🌍</span> : Array.from({ length: level === 3 ? 5 : 9 }, (_, i) => <span key={i} className={i % 2 ? 'text-5xl sm:text-6xl' : 'text-6xl sm:text-7xl'}>{i % 3 ? '🌲' : '🌳'}</span>)}
+function GrowthScene({ streak, stageName }: { streak: number; stageName: string }) {
+  const { animals, nextAnimal } = forestLife(streak);
+  const trees = streak < 21 ? 1 : Math.min(11, 3 + Math.floor(streak / 30));
+  return <div className="space-y-2">
+    <div className="relative h-56 sm:h-64 overflow-hidden rounded-2xl bg-gradient-to-b from-sky-100 via-emerald-50 to-emerald-200" role="img" aria-label={`${stageName} 성장 풍경. ${animals.length ? animals.map(a => a.name).join(', ') + '와 함께 살고 있어요.' : '첫 동물 친구를 기다리는 새싹입니다.'}`}>
+      <div className="absolute right-6 top-4 text-4xl" aria-hidden="true">{streak >= 240 ? streak >= 365 ? '🌍' : '🌏' : '☀️'}</div>
+      <div className="absolute bottom-0 inset-x-0 h-24 bg-emerald-300/40 rounded-t-[50%]" />
+      <div className="absolute bottom-4 right-0 h-5 w-2/5 rounded-full bg-sky-300/60 rotate-[-8deg]" />
+      <div className="absolute inset-x-4 top-9 flex items-end justify-center -space-x-3 select-none" aria-hidden="true">
+        {Array.from({ length: trees }, (_, i) => <span key={i} className={i % 2 ? 'text-6xl sm:text-7xl pt-4' : 'text-7xl sm:text-8xl'}>{streak < 7 ? '🌱' : streak < 14 ? '🌿' : streak >= 120 && i % 2 === 0 ? '🌴' : i % 3 ? '🌲' : '🌳'}</span>)}
+      </div>
+      <div className="absolute bottom-2 inset-x-3 grid grid-cols-5 gap-x-2 gap-y-1 items-center justify-items-center" aria-hidden="true">
+        {animals.map(a => <span key={a.name} title={`${a.days}일 · ${a.name}`} className="text-2xl sm:text-3xl drop-shadow-sm">{a.emoji}</span>)}
+      </div>
+      {!animals.length && <p className="absolute inset-x-0 bottom-5 text-center text-xs text-emerald-800">3일 연속 복습하면 첫 나비가 찾아와요</p>}
     </div>
+    <div className="flex flex-wrap justify-between gap-1 text-xs text-emerald-800"><span>함께 사는 동물 친구 {animals.length}마리</span><span>{nextAnimal ? `${nextAnimal.emoji} ${nextAnimal.name}까지 ${nextAnimal.days - streak}일` : '🐋 1년 동안 생명 가득한 지구를 만들었어요!'}</span></div>
   </div>;
 }
 
@@ -110,10 +120,11 @@ export function SmartReviewTab({ uid, today, sessions, ready, error, retry, comp
   return <div className="space-y-5">
     <div className="flex flex-wrap justify-between items-end gap-2"><div><h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Leaf className="text-emerald-600" />스마트 복습</h1><p className="text-sm text-slate-500 mt-1">매일 한 번, 내 문장으로 키우는 영어의 숲</p></div><span className="text-xs text-slate-500">{today} · 한국 시간 기준</span></div>
     <section className="rounded-2xl border border-emerald-200 bg-white p-4 sm:p-6 space-y-4">
-      <GrowthScene level={stats.stageIndex} />
+      <GrowthScene streak={stats.streak} stageName={stats.stage.name} />
       <div className="flex justify-between gap-3"><div><p className="text-sm font-semibold text-emerald-700">나의 {stats.stage.name}</p><p className="text-3xl font-black mt-1">{stats.streak}<span className="text-sm font-semibold text-slate-500 ml-2">일 연속 복습</span></p></div><div className="text-right text-sm text-slate-500">최고 <strong className="text-slate-800">{stats.longest}일</strong><br />누적 완료 <strong className="text-slate-800">{stats.total}일</strong></div></div>
-      <div><div className="flex justify-between text-sm mb-2"><strong className="text-emerald-800">{stats.next ? `${stats.next.name}까지 ${stats.remaining}일!` : '100일의 지구를 만들었어요. 계속 키워요!'}</strong><span className="text-slate-500">{stats.progress}%</span></div><div role="progressbar" aria-label="다음 성장 단계 진행률" aria-valuenow={stats.progress} aria-valuemin={0} aria-valuemax={100} className="h-2.5 bg-emerald-50 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${stats.progress}%` }} /></div></div>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">{GROWTH_STAGES.map((stage, i) => <div key={stage.days} className={`text-center text-xs rounded-xl p-2 ${i === stats.stageIndex ? 'bg-emerald-100 ring-1 ring-emerald-300' : 'bg-slate-50 text-slate-500'}`}><div className="text-xl mb-1">{stage.emoji}</div><strong className="block">{stage.name}</strong><span>{stage.days === 0 ? '시작' : `${stage.days}일`}</span></div>)}</div>
+      <div><div className="flex justify-between text-sm mb-2"><strong className="text-emerald-800">{stats.next ? `${stats.next.name}까지 ${stats.remaining}일!` : '365일의 지구를 만들었어요. 계속 키워요!'}</strong><span className="text-slate-500">{stats.progress}%</span></div><div role="progressbar" aria-label="다음 성장 단계 진행률" aria-valuenow={stats.progress} aria-valuemin={0} aria-valuemax={100} className="h-2.5 bg-emerald-50 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${stats.progress}%` }} /></div></div>
+      <div className="rounded-xl bg-emerald-50 p-3 text-sm"><div className="flex justify-between gap-2"><strong>🌍 1년의 숲 만들기</strong><span>{Math.min(stats.streak, 365)} / 365일</span></div><progress aria-label="365일 성장 여정" value={Math.min(stats.streak, 365)} max={365} className="w-full h-2 mt-2 accent-emerald-600" /><p className="text-xs text-emerald-800 mt-1">{stats.streak < 365 ? `생명의 지구까지 ${365 - stats.streak}일 · ${Math.floor(Math.min(stats.streak, 365) / 365 * 100)}%` : '1년 달성! 연속 복습과 동물 친구들은 계속 함께해요.'}</p></div>
+      <details className="rounded-xl border border-slate-100 p-3"><summary className="cursor-pointer text-sm font-semibold">새싹부터 지구까지 · 16단계 여정 보기</summary><div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">{GROWTH_STAGES.map((stage, i) => <div key={stage.days} className={`text-center text-xs rounded-xl p-2 ${i === stats.stageIndex ? 'bg-emerald-100 ring-1 ring-emerald-300' : 'bg-slate-50 text-slate-500'}`}><div className="text-xl mb-1">{stage.emoji}</div><strong className="block">{stage.name}</strong><span>{stage.days === 0 ? '시작' : `${stage.days}일`}{i === stats.stageIndex ? ' · 현재' : stats.streak >= stage.days ? ' · 달성' : ''}</span></div>)}</div></details>
       <p className="text-xs leading-relaxed text-slate-500">매일 모든 문항을 기록하면 완료. 오답은 연속 기록에 영향을 주지 않아요. 하루라도 완료하지 않으면 연속 기록은 0일부터 다시 시작합니다. 복구·지난 날짜 채우기는 없습니다.</p>
     </section>
     {!uid ? <div className="rounded-2xl bg-indigo-50 p-5 text-sm text-indigo-900">상단 계정에서 Google 로그인 후 시작해 주세요. 복습 기록과 성장 단계가 PC·모바일에 함께 저장됩니다.</div> : <>

@@ -1,3 +1,5 @@
+import { cacheAudioItems, hydrateAudioItems } from './utils/audioCache';
+import { recordingBudget } from './utils/recordingBudget';
 import React, { useState, useEffect, useMemo } from 'react';
 import { DailyComposition, KeyExpression, AudioItem, ActiveTab, BackupData } from './types';
 import {
@@ -43,6 +45,7 @@ export function App() {
   const reviews = useSmartReview(user?.uid);
   const [reviewSources, setReviewSources] = useState<{ uid: string; compositions: DailyComposition[] | null; expressions: KeyExpression[] | null } | null>(null);
   const [currentDate, setCurrentDate] = useState<string>(getTodayDateString());
+  const [audioCacheError, setAudioCacheError] = useState('');
   const [practiceExpressionId, setPracticeExpressionId] = useState<string | null>(null);
 
   // Core Data States with Tombstone Protection (Deleted items are NEVER revived)
@@ -169,9 +172,9 @@ export function App() {
           return {
             ...remote,
             // Preserve local recording data and base64 if remote is empty or local is newer
-            myRecordingUrl: remote.myRecordingUrl || local.myRecordingUrl,
-            myRecordingBase64: remote.myRecordingBase64 || local.myRecordingBase64,
-            myRecordingDuration: remote.myRecordingDuration || local.myRecordingDuration,
+            myRecordingUrl: 'myRecordingUrl' in remote ? remote.myRecordingUrl : local.myRecordingUrl,
+            myRecordingBase64: 'myRecordingBase64' in remote ? remote.myRecordingBase64 : local.myRecordingBase64,
+            myRecordingDuration: 'myRecordingDuration' in remote ? remote.myRecordingDuration : local.myRecordingDuration,
             audioBase64: remote.audioBase64 || local.audioBase64,
             transcript: remote.transcript !== undefined ? remote.transcript : local.transcript,
           };
@@ -184,7 +187,7 @@ export function App() {
         );
         const finalList = [...merged, ...pendingLocal];
         try {
-          localStorage.setItem('audio_items_v2', JSON.stringify(finalList));
+          void cacheAudioItems(finalList).catch(() => setAudioCacheError('기기 저장 공간이 부족합니다. 계정 동기화 상태를 확인해 주세요.'));
         } catch {}
         return finalList;
       });
@@ -227,13 +230,30 @@ export function App() {
   }, [compositions]);
 
   useEffect(() => {
-    localStorage.setItem('audio_items_v2', JSON.stringify(audioItems));
+    cacheAudioItems(audioItems).then(() => setAudioCacheError('')).catch(() => setAudioCacheError('기기 저장 공간이 부족합니다. 계정 동기화 상태를 확인하고 녹음을 내려받아 보관해 주세요.'));
   }, [audioItems]);
 
   useEffect(() => {
     localStorage.setItem('key_expressions_v2', JSON.stringify(expressions));
   }, [expressions]);
 
+
+  useEffect(() => {
+    let active = true;
+    hydrateAudioItems(audioItems).then(restored => {
+      if (!active) return;
+      const map = new Map(restored.map(item => [item.id, item]));
+      setAudioItems(previous => previous.map(item => {
+        const saved = map.get(item.id);
+        if (!saved || item.updatedAt !== saved.updatedAt) return item;
+        return { ...item,
+          ...(item.audioUrl?.startsWith('indexeddb:') ? { audioBase64: saved.audioBase64, audioUrl: saved.audioUrl } : {}),
+          ...(item.myRecordingUrl?.startsWith('indexeddb:') ? { myRecordingBase64: saved.myRecordingBase64, myRecordingUrl: saved.myRecordingUrl } : {}),
+        };
+      }));
+    }).catch(() => setAudioCacheError('기기에 보관한 음성을 불러오지 못했습니다.'));
+    return () => { active = false; };
+  }, []);
 
   // --- COMPOSITION HANDLERS (Tab 1) ---
   const handleSaveComposition = async (
@@ -347,20 +367,16 @@ export function App() {
       updatedAt: now,
     };
 
-    setAudioItems((prev) => [createdItem, ...prev]);
-
-    if (user) {
-      try {
+    try {
+      if (user) {
         await saveAudioItemToFirestore(user.uid, createdItem);
-        markSynced();
-      } catch (err) {
-        console.warn('Firestore audio save error:', err);
-        markError();
-        throw err;
-      }
-    } else {
-      // Local-only mode still works on the current device; sign in for cross-device sync.
+        await cacheAudioItems([createdItem, ...audioItems]).catch(() => setAudioCacheError('클라우드에는 저장했지만 기기 저장 공간이 부족합니다.'));
+      } else { await cacheAudioItems([createdItem, ...audioItems]); }
+      setAudioItems(previous => [createdItem, ...previous.filter(item => item.id !== createdItem.id)]);
       markSynced();
+    } catch (err) {
+      markError();
+      throw new Error(user ? '음성을 저장하지 못했습니다. 인터넷 연결과 로그인 상태를 확인하고 다시 시도해 주세요.' : '기기 저장 공간이 부족합니다. Google 로그인 후 다시 시도해 주세요.');
     }
   };
 
@@ -371,7 +387,7 @@ export function App() {
       const updated = prev.map((a) =>
         a.id === id ? { ...a, transcript: cleanTranscript, updatedAt: Date.now() } : a
       );
-      localStorage.setItem('audio_items_v2', JSON.stringify(updated));
+      void cacheAudioItems(updated).catch(() => setAudioCacheError('기기 저장 공간이 부족합니다. 녹음은 파일로 내려받아 보관해 주세요.'));
       return updated;
     });
 
@@ -400,48 +416,26 @@ export function App() {
   ) => {
     markSaving();
 
-    if (recordingBase64.length > MAX_SYNC_AUDIO_BASE64_CHARS) {
+    const existing = audioItems.find(item => item.id === id);
+    if (!existing || recordingBase64.length > recordingBudget(existing)) {
       markError();
-      throw new Error('녹음 파일이 너무 큽니다. 녹음을 조금 짧게 나눠서 저장해주세요.');
+      throw new Error('저장 가능한 녹음 용량을 넘었습니다. 파일을 내려받아 보관하고 녹음을 나눠 주세요.');
     }
-
-    const updatedAt = Date.now();
-
-    // Update the current device immediately.
-    setAudioItems((prev) => {
-      const updated = prev.map((a) =>
-        a.id === id
-          ? {
-              ...a,
-              myRecordingUrl: null,
-              myRecordingBase64: recordingBase64,
-              myRecordingDuration: duration || a.myRecordingDuration,
-              updatedAt,
-            }
-          : a
-      );
-      try {
-        localStorage.setItem('audio_items_v2', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
-    if (user) {
-      try {
-        await updateAudioItemInFirestore(id, {
-          myRecordingUrl: null,
-          myRecordingBase64: recordingBase64,
-          myRecordingDuration: duration || null,
-          updatedAt,
-        });
-        markSynced();
-      } catch (err) {
-        console.warn('Firestore audio recording save error:', err);
-        markError();
-        throw err;
+    const updates = { myRecordingUrl: null, myRecordingBase64: recordingBase64, myRecordingDuration: duration || null, updatedAt: Date.now() };
+    const updated = audioItems.map(item => item.id === id ? { ...item, ...updates } : item);
+    try {
+      if (user) {
+        await updateAudioItemInFirestore(id, updates);
+        // Cloud success is durable even when this device's offline cache is full.
+        await cacheAudioItems(updated).catch(() => setAudioCacheError('클라우드에는 저장했지만 기기 저장 공간이 부족합니다.'));
+      } else {
+        await cacheAudioItems(updated);
       }
-    } else {
+      setAudioItems(previous => previous.map(item => item.id === id ? { ...item, ...updates } : item));
       markSynced();
+    } catch (err) {
+      markError();
+      throw new Error(user ? '녹음을 저장하지 못했습니다. 인터넷 연결과 로그인 상태를 확인하고 다시 시도해 주세요. 미리듣기와 파일 내려받기는 계속 사용할 수 있습니다.' : '기기 저장 공간이 부족합니다. 파일을 내려받아 보관하거나 Google 로그인 후 다시 저장해 주세요.');
     }
   };
 
@@ -500,7 +494,7 @@ export function App() {
 
     setAudioItems((prev) => {
       const updated = prev.filter((a) => a.id !== id);
-      localStorage.setItem('audio_items_v2', JSON.stringify(updated));
+      void cacheAudioItems(updated).catch(() => setAudioCacheError('기기 저장 공간이 부족합니다. 녹음은 파일로 내려받아 보관해 주세요.'));
       return updated;
     });
 
@@ -645,7 +639,7 @@ export function App() {
     setExpressions(newExprs);
 
     localStorage.setItem('daily_compositions_v2', JSON.stringify(newComps));
-    localStorage.setItem('audio_items_v2', JSON.stringify(newAudios));
+    await cacheAudioItems(newAudios);
     localStorage.setItem('key_expressions_v2', JSON.stringify(newExprs));
 
     if (user) {
@@ -719,6 +713,7 @@ export function App() {
 
       {/* Main Content Area - keep tabs mounted so state is preserved across tab switching */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-24 sm:pb-28">
+        {audioCacheError && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{audioCacheError}</p>}
         {activeTab !== 'review' && <ReviewReminder today={reviews.today} sessions={reviews.sessions} ready={reviews.ready} open={() => setActiveTab('review')} />}
         <div className={activeTab === 'review' ? 'block' : 'hidden'}>
           <SmartReviewTab key={user?.uid || 'signed-out'} uid={user?.uid} {...reviews}
@@ -792,15 +787,12 @@ export function App() {
 
       {/* Primary Bottom Navigation Bar (Unified across all screen sizes) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg py-2 px-3">
-        <div className="max-w-md sm:max-w-2xl mx-auto flex items-center justify-around gap-0.5">
-          <button type="button" onClick={() => setActiveTab('review')} className={`flex flex-col items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-xs font-semibold ${activeTab === 'review' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500'}`}>
-            <span aria-hidden="true">🌱</span><span className="text-[11px] sm:text-xs whitespace-nowrap">스마트 복습</span>
-          </button>
+        <div className="max-w-md sm:max-w-2xl mx-auto grid grid-cols-5 items-center gap-0.5">
           {/* Tab 1: 매일 영작 */}
           <button
             type="button"
             onClick={() => setActiveTab('writing')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+            className={`min-w-0 flex flex-col items-center justify-center gap-1 py-1.5 px-0.5 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
               activeTab === 'writing'
                 ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
@@ -823,7 +815,7 @@ export function App() {
           <button
             type="button"
             onClick={() => setActiveTab('audio-shadowing')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+            className={`min-w-0 flex flex-col items-center justify-center gap-1 py-1.5 px-0.5 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
               activeTab === 'audio-shadowing'
                 ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
@@ -842,11 +834,14 @@ export function App() {
             )}
           </button>
 
+          <button type="button" onClick={() => setActiveTab('review')} className={`min-w-0 flex flex-col items-center justify-center gap-1 py-2 px-0.5 rounded-xl text-xs font-semibold ring-1 ring-emerald-200 ${activeTab === 'review' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500'}`}>
+            <span aria-hidden="true">🌱</span><span className="text-[11px] sm:text-xs whitespace-nowrap">스마트 복습</span>
+          </button>
           {/* Tab 3: 주요 표현 */}
           <button
             type="button"
             onClick={() => setActiveTab('expressions')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+            className={`min-w-0 flex flex-col items-center justify-center gap-1 py-1.5 px-0.5 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
               activeTab === 'expressions'
                 ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
@@ -869,7 +864,7 @@ export function App() {
           <button
             type="button"
             onClick={() => setActiveTab('summary')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+            className={`min-w-0 flex flex-col items-center justify-center gap-1 py-1.5 px-0.5 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
               activeTab === 'summary'
                 ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'

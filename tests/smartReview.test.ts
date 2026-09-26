@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createReviewSession, isComplete, recordReviewAnswer, reviewDate, reviewStats, shiftReviewDate } from '../src/lib/smartReview.ts';
+import { createReviewSession, forestLife, GROWTH_STAGES, isComplete, recordReviewAnswer, reviewDate, reviewStats, shiftReviewDate } from '../src/lib/smartReview.ts';
 import type { ReviewAnswer, ReviewSession } from '../src/lib/smartReview.ts';
 
 const date = '2026-09-26';
@@ -76,10 +76,30 @@ test('overdue and incorrect sources rise above recently correct items', () => {
   assert.equal(a.questions[1].sourceId, 'writing:6');
 });
 test('growth thresholds, duplicate dates and future records are handled', () => {
-  const history = Array.from({ length: 100 }, (_, i) => finished(shiftReviewDate(date, i - 99)));
+  const history = Array.from({ length: 365 }, (_, i) => finished(shiftReviewDate(date, i - 364)));
   const stats = reviewStats([...history, history[0], finished('2026-09-27')], date);
-  assert.equal(stats.streak, 100); assert.equal(stats.stage.name, '지구'); assert.equal(stats.progress, 100); assert.equal(stats.total, 100);
+  assert.equal(stats.streak, 365); assert.equal(stats.stage.name, '생명의 지구'); assert.equal(stats.progress, 100); assert.equal(stats.total, 365);
   assert.equal(reviewStats(history.slice(-30), date).stage.name, '숲');
   const tree = reviewStats(history.slice(-7), date);
   assert.equal(tree.stage.name, '어린나무'); assert.equal(tree.remaining, 7); assert.equal(tree.progress, 0);
+});
+
+ test('all 16 milestones and animal arrivals follow the current streak through and beyond one year', () => {
+  const history = Array.from({ length: 400 }, (_, i) => finished(shiftReviewDate(date, i - 399)));
+  for (const stage of GROWTH_STAGES) {
+    const days = stage.days;
+    const stats = reviewStats(days ? history.slice(-days) : [], date);
+    assert.equal(stats.stage.name, stage.name);
+    assert.equal(stats.progress, days === 365 ? 100 : 0);
+    if (days > 0) assert.notEqual(reviewStats(history.slice(-(days - 1)).filter(() => days > 1), date).stage.name, stage.name);
+  }
+  assert.equal(forestLife(0).animals.length, 0);
+  assert.equal(forestLife(3).animals[0].name, '나비');
+  assert.equal(forestLife(150).animals.at(-1).name, '원숭이');
+  assert.equal(forestLife(365).animals.length, 15);
+  assert.equal(forestLife(400).nextAnimal, undefined);
+  assert.equal(reviewStats(history, date).stage.name, '생명의 지구');
+  assert.equal(reviewStats(history, date).progress, 100);
+  const broken = reviewStats(history, shiftReviewDate(date, 2));
+  assert.equal(forestLife(broken.streak).animals.length, 0);
 });

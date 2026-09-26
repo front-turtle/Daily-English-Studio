@@ -1,3 +1,4 @@
+import { hydrateAudioItems } from '../utils/audioCache';
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -97,13 +98,14 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   };
 
   // Export to JSON File
-  const handleExportFile = () => {
+  const handleExportFile = async () => {
+    try {
     const backup: BackupData = {
       version: 1,
       exportedAt: new Date().toISOString(),
       userEmail: user?.email || null,
       compositions,
-      audioItems,
+      audioItems: await hydrateAudioItems(audioItems, true),
       expressions,
     };
 
@@ -120,16 +122,18 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     URL.revokeObjectURL(url);
 
     showToast('전체 데이터 백업 파일(.json)이 다운로드되었습니다.');
+    } catch (err) { showToast(err instanceof Error ? err.message : '백업에 실패했습니다.'); }
   };
 
   // Copy JSON to Clipboard
   const handleCopyJson = async () => {
+    try {
     const backup: BackupData = {
       version: 1,
       exportedAt: new Date().toISOString(),
       userEmail: user?.email || null,
       compositions,
-      audioItems,
+      audioItems: await hydrateAudioItems(audioItems, true),
       expressions,
     };
 
@@ -140,6 +144,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     } catch {
       showToast('클립보드 복사에 실패했습니다.');
     }
+    } catch (err) { showToast(err instanceof Error ? err.message : '백업에 실패했습니다.'); }
   };
 
   // Handle File Selection for Import

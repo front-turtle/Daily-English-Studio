@@ -1,7 +1,9 @@
+import { prepareRecording } from '../utils/prepareRecording';
+import { recordingBudget } from '../utils/recordingBudget';
 import React, { useState, useRef, useEffect } from 'react';
 import { AudioItem } from '../types';
 import { AudioPlayerWithSpeed } from './AudioPlayerWithSpeed';
-import { saveAudioToStorage, blobToBase64 } from '../utils/audioStorage';
+import { blobToBase64 } from '../utils/audioStorage';
 import {
   Upload,
   Mic,
@@ -225,30 +227,16 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
 
     setIsUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = reader.result as string;
-        await onUploadAudio(
-          uploadTitle.trim() || selectedFile.name,
-          selectedFile.name,
-          base64,
-          uploadDate || todayStr,
-          uploadTranscript.trim()
-        );
-        setSelectedFile(null);
-        setUploadTitle('');
-        setUploadTranscript('');
-        setUploadDate(todayStr);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        showToast('음성 파일이 업로드되었습니다! (모바일/PC 어디서든 재생 가능)');
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(selectedFile);
+      const prepared = await prepareRecording(selectedFile, 400_000);
+      const base64 = await blobToBase64(prepared);
+      const fileName = prepared === selectedFile ? selectedFile.name : selectedFile.name.replace(/\.[^/.]+$/, '') + '.mp3';
+      await onUploadAudio(uploadTitle.trim() || selectedFile.name, fileName, base64, uploadDate || todayStr, uploadTranscript.trim());
+      setSelectedFile(null); setUploadTitle(''); setUploadTranscript(''); setUploadDate(todayStr);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      showToast('음성 파일이 저장되었습니다!');
     } catch (err) {
-      console.error(err);
-      alert('업로드 중 문제가 발생했습니다.');
-      setIsUploading(false);
-    }
+      alert(err instanceof Error ? err.message : '업로드 중 문제가 발생했습니다.');
+    } finally { setIsUploading(false); }
   };
 
   // Toggle transcript expand/collapse with arrow button
@@ -334,7 +322,7 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
         return;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: { ideal: 1 }, echoCancellation: true, noiseSuppression: true } });
       mediaStreamRef.current = stream;
       audioChunksRef.current = [];
 
@@ -351,8 +339,8 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
         }
       }
 
-      const options = mimeType ? { mimeType } : undefined;
-      const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
+      const options: MediaRecorderOptions = { audioBitsPerSecond: 32000, ...(mimeType ? { mimeType } : {}) };
+      const recorder = new MediaRecorder(stream, options);
       const usedMimeType = recorder.mimeType || mimeType || 'audio/webm';
 
       recorder.ondataavailable = (event) => {
@@ -413,26 +401,29 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
 
   // Save new recording to server & local storage
   const handleConfirmSaveRecording = async (id: string) => {
-    if (!recordedBlob) return;
+    if (!recordedBlob || isSavingRecording) return;
     setIsSavingRecording(true);
     try {
       const duration = recordedDuration || recordSeconds || 0;
 
       // 1. Convert to Base64 safely via Promise
-      const base64 = await blobToBase64(recordedBlob);
+      const item = audioItems.find(a => a.id === id);
+      if (!item) throw new Error('학습 음성을 찾지 못했습니다.');
+      const prepared = await prepareRecording(recordedBlob, recordingBudget(item));
+      const base64 = await blobToBase64(prepared);
 
       // 2. Save locally to IndexedDB in background without blocking
-      saveAudioToStorage(`rec-${id}`, recordedBlob).catch((e) => console.warn('IDB save warn:', e));
+      // Parent commits storage before reporting success. Keep preview on failure.
 
       // 3. Save via parent handler (optimistic state + localStorage + server + firestore)
-      await onSaveRecording(id, base64, recordedBlob.type, duration);
+      await onSaveRecording(id, base64, prepared.type, duration);
 
       showToast('새 녹음본이 안전하게 저장되었습니다!');
       cancelRecording();
     } catch (err: any) {
       console.error('Recording save error:', err);
       showToast('녹음 저장 중 문제가 발생했습니다.');
-      alert('녹음 저장에 실패했습니다. 다시 시도해주세요.');
+      alert(err instanceof Error ? err.message : '녹음 저장에 실패했습니다. 다시 시도하거나 파일을 내려받아 보관해 주세요.');
     } finally {
       setIsSavingRecording(false);
     }
@@ -844,7 +835,7 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
                         <span>🎙️ 2. 내 음성 녹음 (비교 & 체크)</span>
                       </span>
 
-                      {item.myRecordingUrl ? (
+                      {(item.myRecordingUrl || item.myRecordingBase64) ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                           저장됨
                         </span>
@@ -955,7 +946,7 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
                               <span>녹음 완료하기 ({formatSeconds(recordSeconds)})</span>
                             </button>
                             <p className="text-[11px] text-slate-400 text-center">
-                              원하는 만큼 말하고 녹음 완료하기 버튼을 누르세요.
+                              음성에 맞는 작은 용량으로 녹음합니다. 완료 후 크기를 확인하고 필요하면 자동 압축해요.
                             </p>
                           </div>
                         )}
@@ -981,11 +972,12 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
                               </div>
                             ) : (
                               <p className="text-[11px] text-indigo-900 bg-indigo-50 p-2 rounded-lg">
-                                💡 <strong>이 녹음이 마음에 드시나요?</strong> 아래 '이 녹음으로 저장'을 누르면 파일에 영구 저장됩니다. 마음에 들지 않으면 '다시 녹음'을 눌러 얼마든지 재도전하세요.
+                                💡 <strong>이 녹음이 마음에 드시나요?</strong> 아래 '이 녹음으로 저장'을 누르면 저장됩니다. 마음에 들지 않으면 '다시 녹음'을 눌러 얼마든지 재도전하세요.
                               </p>
                             )}
 
-                            <div className="flex items-center justify-end gap-2 pt-1">
+                            <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                              <a href={previewAudioUrl} download={`recording-${item.id}.${recordedBlob?.type.includes('mp4') ? 'm4a' : recordedBlob?.type.includes('aac') ? 'aac' : 'webm'}`} className="text-xs text-indigo-700 underline px-2 py-2">녹음 파일 내려받기</a>
                               <button
                                 type="button"
                                 disabled={isSavingRecording}
