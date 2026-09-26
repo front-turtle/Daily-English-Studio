@@ -30,6 +30,15 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
+      - name: Typecheck and review regression tests
+        run: npm run lint && npm test
+      - name: Setup Java for Firestore emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify owner isolation and cross-device transactions
+        run: npx --yes firebase-tools emulators:exec --only firestore --project demo-smart-review "node --test tests/firestore-rules.integration.mjs"
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

@@ -13,6 +13,8 @@ import { AudioShadowingTab } from './components/AudioShadowingTab';
 import { KeyExpressionsTab } from './components/KeyExpressionsTab';
 import { SummaryTab } from './components/SummaryTab';
 import { AiTutorTab } from './components/AiTutorTab';
+import { SmartReviewTab, ReviewReminder } from './components/SmartReviewTab';
+import { useSmartReview } from './hooks/useSmartReview';
 import { PenLine, Headphones, BookOpen, CalendarDays } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import {
@@ -37,7 +39,9 @@ const MAX_SYNC_AUDIO_BASE64_CHARS = 400_000;
 
 export function App() {
   const { user, markSaving, markSynced, markError } = useAuth();
-  const [activeTab, setActiveTab] = useState<ActiveTab>('writing');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('review');
+  const reviews = useSmartReview(user?.uid);
+  const [reviewSources, setReviewSources] = useState<{ uid: string; compositions: DailyComposition[] | null; expressions: KeyExpression[] | null } | null>(null);
   const [currentDate, setCurrentDate] = useState<string>(getTodayDateString());
   const [practiceExpressionId, setPracticeExpressionId] = useState<string | null>(null);
 
@@ -115,6 +119,7 @@ export function App() {
 
   // Real-time Firestore sync when logged in
   useEffect(() => {
+    setReviewSources(user ? { uid: user.uid, compositions: null, expressions: null } : null);
     if (!user) return;
 
     // Check & initialize sample starter data only ONCE per user account
@@ -132,6 +137,7 @@ export function App() {
         deletedIds = new Set(JSON.parse(localStorage.getItem('deleted_composition_ids_v2') || '[]'));
       } catch {}
       const activeComps = remoteComps.filter((c) => !deletedIds.has(c.id));
+      setReviewSources(s => s?.uid === user.uid ? { ...s, compositions: activeComps } : s);
       setCompositions((prevLocal) => {
         const remoteMap = new Map(activeComps.map((c) => [c.id, c]));
         const pendingLocal = prevLocal.filter(
@@ -190,6 +196,7 @@ export function App() {
         deletedIds = new Set(JSON.parse(localStorage.getItem('deleted_expression_ids_v2') || '[]'));
       } catch {}
       const activeExprs = remoteExprs.filter((e) => !deletedIds.has(e.id));
+      setReviewSources(s => s?.uid === user.uid ? { ...s, expressions: activeExprs } : s);
       setExpressions((prevLocal) => {
         const remoteMap = new Map(activeExprs.map((e) => [e.id, e]));
         const pendingLocal = prevLocal.filter(
@@ -698,7 +705,7 @@ export function App() {
       />
 
       {/* Diary-style Global Date Controller Bar with Arrow Buttons & Dropdown Calendar (Hidden on Summary tab per user request) */}
-      {activeTab !== 'summary' && activeTab !== 'ai' && (
+      {activeTab !== 'summary' && activeTab !== 'ai' && activeTab !== 'review' && (
         <DiaryDateBar
           currentDate={currentDate}
           onDateChange={setCurrentDate}
@@ -712,6 +719,14 @@ export function App() {
 
       {/* Main Content Area - keep tabs mounted so state is preserved across tab switching */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-24 sm:pb-28">
+        {activeTab !== 'review' && <ReviewReminder today={reviews.today} sessions={reviews.sessions} ready={reviews.ready} open={() => setActiveTab('review')} />}
+        <div className={activeTab === 'review' ? 'block' : 'hidden'}>
+          <SmartReviewTab key={user?.uid || 'signed-out'} uid={user?.uid} {...reviews}
+            compositions={reviewSources?.uid === user?.uid ? reviewSources?.compositions || [] : []}
+            expressions={reviewSources?.uid === user?.uid ? reviewSources?.expressions || [] : []}
+            sourcesReady={!!user && reviewSources?.uid === user.uid && reviewSources.compositions !== null && reviewSources.expressions !== null}
+            onAddSource={() => setActiveTab('writing')} />
+        </div>
         <div className={activeTab === 'writing' ? 'block' : 'hidden'}>
           <DailyWritingTab
             compositions={compositions}
@@ -777,12 +792,15 @@ export function App() {
 
       {/* Primary Bottom Navigation Bar (Unified across all screen sizes) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg py-2 px-3">
-        <div className="max-w-md sm:max-w-lg mx-auto flex items-center justify-around gap-1">
+        <div className="max-w-md sm:max-w-2xl mx-auto flex items-center justify-around gap-0.5">
+          <button type="button" onClick={() => setActiveTab('review')} className={`flex flex-col items-center justify-center gap-1 py-1.5 px-2 rounded-xl text-xs font-semibold ${activeTab === 'review' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500'}`}>
+            <span aria-hidden="true">🌱</span><span className="text-[11px] sm:text-xs whitespace-nowrap">스마트 복습</span>
+          </button>
           {/* Tab 1: 매일 영작 */}
           <button
             type="button"
             onClick={() => setActiveTab('writing')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
               activeTab === 'writing'
                 ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
@@ -805,7 +823,7 @@ export function App() {
           <button
             type="button"
             onClick={() => setActiveTab('audio-shadowing')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
               activeTab === 'audio-shadowing'
                 ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
@@ -828,7 +846,7 @@ export function App() {
           <button
             type="button"
             onClick={() => setActiveTab('expressions')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
               activeTab === 'expressions'
                 ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
@@ -851,7 +869,7 @@ export function App() {
           <button
             type="button"
             onClick={() => setActiveTab('summary')}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
               activeTab === 'summary'
                 ? 'text-indigo-600 bg-indigo-50/90 shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'

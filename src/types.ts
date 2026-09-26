@@ -43,7 +43,7 @@ export interface AiTutorMessage {
   createdAt: number;
 }
 
-export type ActiveTab = 'writing' | 'audio-shadowing' | 'expressions' | 'ai' | 'summary';
+export type ActiveTab = 'writing' | 'audio-shadowing' | 'expressions' | 'ai' | 'summary' | 'review';
 
 export interface BackupData {
   version: number;
