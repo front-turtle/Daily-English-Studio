@@ -1,0 +1,7 @@
+Audio compression uses @breezystack/lamejs 1.2.7, by Alex Zhukov and contributors,
+distributed under LGPL-3.0. The license is provided in lamejs-LICENSE.txt.
+Source and build instructions: https://github.com/shijinyu/lamejs
+Package: https://www.npmjs.com/package/@breezystack/lamejs/v/1.2.7
+The unmodified encoder is dynamically imported as a separate Vite asset chunk.
+To replace it, install a compatible Mp3Encoder implementation in package.json
+and rebuild this repository with npm install followed by npm run build.

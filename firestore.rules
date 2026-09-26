@@ -13,6 +13,42 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read, create, update, delete: if isOwner(userId);
+
+      // One document per day: history grows without filling the user profile.
+      match /smartReviews/{date} {
+        function isCurrentDay(data) {
+          return data.dayStart is int
+                 && data.dayStart % 86400000 == 54000000
+                 && request.time.toMillis() >= data.dayStart
+                 && request.time.toMillis() < data.dayStart + 86400000;
+        }
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+                      && isCurrentDay(request.resource.data)
+                      && request.resource.data.date == date
+                      && request.resource.data.version == 1
+                      && request.resource.data.timezone == 'Asia/Seoul'
+                      && request.resource.data.questions is list
+                      && request.resource.data.questions.size() > 0
+                      && request.resource.data.questions.size() <= 5
+                      && request.resource.data.answers == {}
+                      && request.resource.data.completedAt == null;
+        allow update: if isOwner(userId)
+                      && isCurrentDay(resource.data)
+                      && resource.data.completedAt == null
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers', 'completedAt'])
+                      && request.resource.data.answers is map
+                      && request.resource.data.answers.diff(resource.data.answers).changedKeys().size() == 0
+                      && request.resource.data.answers.diff(resource.data.answers).removedKeys().size() == 0
+                      && request.resource.data.answers.diff(resource.data.answers).addedKeys().size() == 1
+                      && request.resource.data.answers.keys().hasOnly(['q0', 'q1', 'q2', 'q3', 'q4'])
+                      && request.resource.data.answers.size() <= resource.data.questions.size()
+                      && ((request.resource.data.answers.size() == resource.data.questions.size()
+                           && request.resource.data.completedAt is int)
+                          || (request.resource.data.answers.size() < resource.data.questions.size()
+                              && request.resource.data.completedAt == null));
+        // No deletion, reset, or streak recovery through the client.
+      }
     }
 
     match /compositions/{documentId} {

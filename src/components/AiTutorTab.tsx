@@ -1,3 +1,4 @@
+import { PronunciationPopup } from './PronunciationPopup';
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, Send, Sparkles, Trash2, User, BookmarkPlus, Check, X } from 'lucide-react';
 import { createEnglishTutorChat, TutorHistoryItem } from '../lib/geminiTutor';
@@ -365,6 +366,7 @@ export const AiTutorTab: React.FC<AiTutorTabProps> = ({
           )}
         </div>
 
+        <div className="mt-4"><PronunciationPopup /></div>
         <div className="flex flex-wrap gap-2 mt-4">
           {quickPrompts.map((prompt) => (
             <button
