@@ -32,6 +32,10 @@ jobs:
         run: npm run build
       - name: Typecheck and review regression tests
         run: npm run lint && npm test
+      - name: Install browser for application tests
+        run: npx playwright install --with-deps chromium
+      - name: Verify responsive UI, pronunciation and audio compression
+        run: npx playwright test
       - name: Setup Java for Firestore emulator
         uses: actions/setup-java@v4
         with:
