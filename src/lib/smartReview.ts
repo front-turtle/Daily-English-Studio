@@ -8,6 +8,7 @@ export interface ReviewQuestion {
   english: string;
   korean: string;
   direction: ReviewDirection;
+  focus?: string;
 }
 export interface ReviewAnswer {
   text: string;
@@ -18,6 +19,7 @@ export interface ReviewAnswer {
 }
 export interface ReviewSession {
   version: 1;
+  mode?: 'daily-short' | 'extra';
   date: string;
   timezone: 'Asia/Seoul';
   dayStart: number;
@@ -79,8 +81,14 @@ export function forestLife(streak: number) {
   return { animals: FOREST_ANIMALS.filter(a => a.days <= streak), nextAnimal: FOREST_ANIMALS.find(a => a.days > streak) };
 }
 
+export const sessionDay = (session: Pick<ReviewSession, 'date'>) => session.date.slice(0, 10);
+export const isExtra = (session: ReviewSession) => session.mode === 'extra' || session.date.includes('~extra~');
+export function dailySession(sessions: ReviewSession[], day: string): ReviewSession | undefined {
+  const daily = sessions.filter(s => sessionDay(s) === day && !isExtra(s));
+  return daily.find(isComplete) || daily.find(s => s.mode === 'daily-short') || daily[0];
+}
 export function reviewStats(sessions: ReviewSession[], today: string) {
-  const dates = [...new Set(sessions.filter(s => s.date <= today && isComplete(s)).map(s => s.date))].sort();
+  const dates = [...new Set(sessions.filter(s => !isExtra(s) && sessionDay(s) <= today && isComplete(s)).map(sessionDay))].sort();
   const completed = new Set(dates);
   let cursor = completed.has(today) ? today : shiftReviewDate(today, -1);
   let streak = 0;
@@ -102,42 +110,94 @@ function hash(text: string): number {
   return h >>> 0;
 }
 
-export function createReviewSession(date: string, compositions: DailyComposition[], expressions: KeyExpression[], history: ReviewSession[], now = Date.now()): ReviewSession {
-  const seen = new Set<string>();
-  const candidates: (Omit<ReviewQuestion, 'id' | 'direction'> & { spoken: number })[] = [];
-  const add = (sourceId: string, source: ReviewQuestion['source'], english: string, korean: string, spoken = 0) => {
-    english = english.trim(); korean = korean.trim();
-    const key = `${english.toLowerCase()}\n${korean}`;
-    // Do not truncate the meaning of a long passage or create a one-sided question.
-    if (!english || !korean || english.length > 2000 || korean.length > 2000 || seen.has(key)) return;
-    seen.add(key); candidates.push({ sourceId, source, english, korean, spoken });
-  };
-  for (const c of [...compositions].sort((a, b) => a.id.localeCompare(b.id))) {
-    add(`writing:${c.id}`, c.polished?.trim() ? 'polished' : 'writing', c.polished?.trim() || c.english || '', c.korean || '');
+export type ReviewCandidate = Omit<ReviewQuestion, 'id' | 'direction'> & { spoken: number; correction: boolean };
+export function sentences(text: string): string[] {
+  return text.trim().split(/(?<=[.!?。！？])(?:[\s]+|$)|[\r\n]+/u).map(s => s.trim()).filter(Boolean);
+}
+export function isShortReviewText(text: string): boolean {
+  return !!text.trim() && text.length <= 300 && sentences(text).length <= 3;
+}
+export function localReviewCandidates(compositions: DailyComposition[], expressions: KeyExpression[]): ReviewCandidate[] {
+  const candidates: ReviewCandidate[] = [];
+  for (const c of [...compositions].sort((a,b) => a.id.localeCompare(b.id))) {
+    if (!c.polished?.trim()) continue; // Never teach the uncorrected draft.
+    const english = sentences(c.polished), korean = sentences(c.korean);
+    const original = sentences(c.english);
+    // Only align complete sentences where both versions have the same structure.
+    // Mismatched passages require semantic extraction, not unrelated truncation.
+    if (english.length !== korean.length) continue;
+    english.forEach((en, i) => {
+      if (!isShortReviewText(en) || !isShortReviewText(korean[i])) return;
+      const correction = original.length !== english.length || original[i] !== en;
+      candidates.push({ sourceId: `writing:${c.id}:${hash(en)}`, source: 'polished', english: en, korean: korean[i], spoken: 0, correction,
+        focus: correction ? '첨삭으로 달라진 문장' : '다시 쓸 수 있는 핵심 문장' });
+    });
   }
-  for (const e of [...expressions].sort((a, b) => a.id.localeCompare(b.id))) add(`expression:${e.id}`, 'expression', e.expression || '', e.meaning || '', e.spokenCount || 0);
+  for (const e of [...expressions].sort((a,b) => a.id.localeCompare(b.id))) {
+    if (isShortReviewText(e.expression || '') && isShortReviewText(e.meaning || '')) candidates.push({ sourceId: `expression:${e.id}`, source: 'expression', english: e.expression.trim(), korean: e.meaning.trim(), spoken: e.spokenCount || 0, correction: false, focus: '내 주요 표현' });
+  }
+  return candidates;
+}
+export function focusedReviewCandidates(
+  compositions: DailyComposition[], local: ReviewCandidate[],
+  items: { id: string; english: string; korean: string; focus?: string }[],
+): ReviewCandidate[] {
+  const byId = new Map(compositions.map(c => [c.id, c]));
+  const ai: ReviewCandidate[] = [];
+  for (const item of items.slice(0, 20)) {
+    const source = byId.get(item.id);
+    if (!source || typeof item.english !== 'string' || typeof item.korean !== 'string') continue;
+    const en = item.english.trim(), ko = item.korean.trim();
+    if (!source.polished?.includes(en) || !isShortReviewText(en) || !isShortReviewText(ko)) continue;
+    ai.push({ sourceId: `writing:${source.id}:${hash(en)}`, source: 'polished', english: en, korean: ko,
+      spoken: 0, correction: true, focus: String(item.focus || '첨삭으로 달라진 표현').slice(0, 100) });
+  }
+  const focused = new Set(ai.map(c => c.sourceId.split(':')[1]));
+  return [...ai, ...local.filter(c => c.source === 'expression' || !focused.has(c.sourceId.split(':')[1]))];
+}
+export function createReviewSession(date: string, compositions: DailyComposition[], expressions: KeyExpression[], history: ReviewSession[], now = Date.now(), options: { candidates?: ReviewCandidate[]; extra?: boolean; key?: string } = {}): ReviewSession {
+  const unique = new Map<string, ReviewCandidate>();
+  for (const c of options.candidates || localReviewCandidates(compositions, expressions)) {
+    if (isShortReviewText(c.english) && isShortReviewText(c.korean)) unique.set(c.english.toLowerCase() + '\n' + c.korean, c);
+  }
+  const candidates = [...unique.values()];
   const last = new Map<string, { date: string; correct: boolean }>();
-  for (const session of [...history].filter(s => s.date < date).sort((a, b) => a.date.localeCompare(b.date))) {
+  const usedToday = new Map<string, number>();
+  for (const session of [...history].sort((a,b) => a.createdAt - b.createdAt)) {
     for (const q of session.questions) {
+      if (sessionDay(session) === date) usedToday.set(q.english, (usedToday.get(q.english) || 0) + 1);
       const answer = session.answers[q.id];
-      if (answer) last.set(q.sourceId, { date: session.date, correct: answer.correct });
+      if (answer && sessionDay(session) < date) last.set(q.sourceId, { date: sessionDay(session), correct: answer.correct });
     }
   }
-  const priority = (sourceId: string) => {
-    const previous = last.get(sourceId);
-    if (!previous) return 1000;
-    const age = Math.max(0, (Date.parse(date) - Date.parse(previous.date)) / 86400000);
-    return age * 100 + (previous.correct ? 0 : 350);
+  const priority = (c: ReviewCandidate) => {
+    const prev = last.get(c.sourceId);
+    return (prev ? Math.max(0, (Date.parse(date) - Date.parse(prev.date)) / 86400000) * 100 + (prev.correct ? 0 : 350) : 1000) + (c.correction ? 100 : 0);
   };
-  candidates.sort((a, b) => priority(b.sourceId) - priority(a.sourceId) || a.spoken - b.spoken || hash(date + a.sourceId) - hash(date + b.sourceId));
-  const offset = hash(date) % 2;
-  const questions = candidates.slice(0, 5).map(({ spoken, ...q }, i): ReviewQuestion => ({ ...q, id: `q${i}`, direction: (i + offset) % 2 ? 'en-ko' : 'ko-en' }));
-  return { version: 1, date, timezone: 'Asia/Seoul', dayStart: Date.parse(`${date}T00:00:00+09:00`), questions, answers: {}, createdAt: now, completedAt: null };
+  candidates.sort((a,b) => (options.extra ? (usedToday.get(a.english) || 0) - (usedToday.get(b.english) || 0) : 0) || priority(b)-priority(a) || a.spoken-b.spoken || hash(date+a.sourceId)-hash(date+b.sourceId));
+  // Reserve both corrected writing and saved expressions when both exist.
+  const selected: ReviewCandidate[] = [];
+  if (!options.extra) {
+    const writing = candidates.filter(c => c.source === 'polished');
+    const expressions = candidates.filter(c => c.source === 'expression');
+    if (writing.length && expressions.length) selected.push(...writing.slice(0,3), ...expressions.slice(0,2));
+  }
+  for (const c of candidates) if (selected.length < (options.extra ? 1 : 5) && !selected.includes(c)) selected.push(c);
+  const amount = options.extra ? 1 : 5;
+  const offset = (hash(date) + (options.extra ? history.filter(s => sessionDay(s) === date).length : 0)) % 2;
+  const questions: ReviewQuestion[] = [];
+  for (let i=0; selected.length && i<amount; i++) {
+    const { spoken, correction, ...q } = selected[i % selected.length];
+    // With scarce sources, repeat briefly in the opposite direction to still do five.
+    const direction = (selected.length === 1 ? i + offset : i < selected.length ? i + offset : (i % selected.length) + offset + Math.floor(i / selected.length)) % 2 ? 'en-ko' : 'ko-en';
+    questions.push({ ...q, id: `q${i}`, direction });
+  }
+  return { version: 1, mode: options.extra ? 'extra' : 'daily-short', date: options.key || `${date}~short`, timezone: 'Asia/Seoul', dayStart: Date.parse(`${date}T00:00:00+09:00`), questions, answers: {}, createdAt: now, completedAt: null };
 }
 
 // Shared by the transaction and tests. First saved answer wins across devices.
 export function recordReviewAnswer(session: ReviewSession, questionId: string, answer: ReviewAnswer, now = Date.now()): ReviewSession {
-  if (session.date !== reviewDate(new Date(now))) throw new Error('한국 시간 자정이 지났습니다. 오늘의 복습을 새로 시작해 주세요.');
+  if (sessionDay(session) !== reviewDate(new Date(now))) throw new Error('한국 시간 자정이 지났습니다. 오늘의 복습을 새로 시작해 주세요.');
   if (!session.questions.some(q => q.id === questionId)) throw new Error('복습 문항을 다시 불러와 주세요.');
   if (session.answers[questionId] || isComplete(session)) return session;
   if (!answer.text.trim() || answer.text.length > 2000 || typeof answer.correct !== 'boolean') throw new Error('답안을 1~2,000자로 입력해 주세요.');

@@ -1,6 +1,6 @@
 import { doc, getDocFromServer, runTransaction } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import { recordReviewAnswer, reviewDate } from './smartReview.ts';
+import { recordReviewAnswer, reviewDate, sessionDay } from './smartReview.ts';
 import type { ReviewAnswer, ReviewSession } from './smartReview.ts';
 
 // Kept independent of app initialization so the real persistence code can be
@@ -11,7 +11,7 @@ export async function startReviewInDatabase(db: Firestore, uid: string, candidat
   try {
     return await runTransaction(db, async transaction => {
       const snapshot = await transaction.get(ref);
-      if (candidate.date !== reviewDate()) throw new Error('날짜가 바뀌었습니다. 오늘의 복습을 다시 시작해 주세요.');
+      if (sessionDay(candidate) !== reviewDate()) throw new Error('날짜가 바뀌었습니다. 오늘의 복습을 다시 시작해 주세요.');
       if (snapshot.exists()) return snapshot.data() as ReviewSession;
       transaction.set(ref, candidate);
       return candidate;
@@ -19,7 +19,7 @@ export async function startReviewInDatabase(db: Firestore, uid: string, candidat
   } catch (error) {
     // Immutable-data rules can reject a concurrent write before the SDK gets
     // an ABORTED response. Reconcile only a confirmed, already-created session.
-    if ((error as { code?: string }).code === 'permission-denied' && candidate.date === reviewDate()) {
+    if ((error as { code?: string }).code === 'permission-denied' && sessionDay(candidate) === reviewDate()) {
       const snapshot = await getDocFromServer(ref);
       if (snapshot.exists()) return snapshot.data() as ReviewSession;
     }
@@ -39,7 +39,7 @@ export async function saveReviewAnswerInDatabase(db: Firestore, uid: string, dat
       return next;
     });
   } catch (error) {
-    if ((error as { code?: string }).code === 'permission-denied' && date === reviewDate()) {
+    if ((error as { code?: string }).code === 'permission-denied' && date.slice(0, 10) === reviewDate()) {
       const snapshot = await getDocFromServer(ref);
       const saved = snapshot.data() as ReviewSession | undefined;
       if (saved?.answers[questionId]) return saved;
