@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createReviewSession, forestLife, GROWTH_STAGES, isComplete, recordReviewAnswer, reviewDate, reviewStats, shiftReviewDate } from '../src/lib/smartReview.ts';
+import { createReviewSession, dailySession, focusedReviewCandidates, forestLife, GROWTH_STAGES, isComplete, isShortReviewText, localReviewCandidates, recordReviewAnswer, reviewDate, reviewStats, shiftReviewDate } from '../src/lib/smartReview.ts';
 import type { ReviewAnswer, ReviewSession } from '../src/lib/smartReview.ts';
 
 const date = '2026-09-26';
@@ -9,8 +9,9 @@ const comp = (id = 'one') => ({ id, date, korean: `한국어 ${id}`, english: `E
 const answer: ReviewAnswer = { text: 'my answer', correct: false, feedback: 'try again', method: 'self', answeredAt: now };
 const session = (day = date, amount = 1) => createReviewSession(day, Array.from({ length: amount }, (_, i) => comp(String(i))), [], [], Date.parse(`${day}T10:00:00+09:00`));
 const finished = (day: string) => {
-  const s = session(day);
-  return recordReviewAnswer(s, 'q0', answer, Date.parse(`${day}T10:00:00+09:00`));
+  let s = session(day);
+  for (const q of s.questions) s = recordReviewAnswer(s, q.id, answer, Date.parse(`${day}T10:00:00+09:00`));
+  return s;
 };
 
 test('Korean midnight is independent of device timezone, including year rollover', () => {
@@ -55,12 +56,12 @@ test('selection is deterministic, uses polished text and both directions, caps a
   assert.equal(new Set(a.questions.map(q => q.direction)).size, 2);
   assert.ok(a.questions.every(q => q.source === 'polished' && q.english.startsWith('Polished')));
 });
-test('uses unpolished writing and expressions; excludes incomplete, long and duplicate sources', () => {
+test('only corrected writing and saved expressions are used; long passages are excluded locally', () => {
   const c = { ...comp(), polished: '' };
   const expressions = [{ id: 'e', date, createdAt: 1, expression: 'Hello', meaning: '안녕' }];
   const a = createReviewSession(date, [c, { ...comp('empty'), korean: '' }, { ...comp('long'), polished: 'a'.repeat(2001) }, { ...c, id: 'duplicate' }], expressions, [], now);
-  assert.equal(a.questions.length, 2);
-  assert.ok(a.questions.some(q => q.source === 'writing'));
+  assert.equal(a.questions.length, 5);
+  assert.ok(a.questions.every(q => q.source === 'expression'));
   assert.ok(a.questions.some(q => q.source === 'expression'));
   assert.equal(createReviewSession(date, [], [], [], now).questions.length, 0);
 });
@@ -72,8 +73,58 @@ test('overdue and incorrect sources rise above recently correct items', () => {
     return recordReviewAnswer(s, 'q0', { ...answer, correct: i !== 6 }, Date.parse(`${day}T10:00:00+09:00`));
   });
   const a = createReviewSession(date, sources, [], history, now);
-  assert.equal(a.questions[0].sourceId, 'writing:7');
-  assert.equal(a.questions[1].sourceId, 'writing:6');
+  assert.ok(a.questions[0].sourceId.startsWith('writing:7:'));
+  assert.ok(a.questions[1].sourceId.startsWith('writing:6:'));
+});
+
+test('long corrected writing is split into short aligned sentences and correction points are preferred', () => {
+  const c = { ...comp('story'), korean: '나는 집에 갔다. 비가 내렸다. 나는 우산을 썼다. 친구를 만났다.',
+    english: 'I go home. It rain. I use umbrella. I meet friend.',
+    polished: 'I went home. It was raining. I used an umbrella. I met a friend.' };
+  const picked = localReviewCandidates([c], []);
+  assert.equal(picked.length, 4);
+  assert.ok(picked.every(p => p.english !== c.polished && p.correction && isShortReviewText(p.english)));
+  assert.ok(picked.some(p => p.english === 'It was raining.' && p.korean === '비가 내렸다.'));
+  const review = createReviewSession(date, [c], [], [], now);
+  assert.equal(review.questions.length, 5);
+  assert.ok(review.questions.every(q => q.english !== c.polished && isShortReviewText(q.english) && isShortReviewText(q.korean)));
+});
+
+test('daily five questions mix corrected writing and expressions and extra practice never changes streak', () => {
+  const expressions = [{ id: 'useful', date, expression: 'I will be there soon.', meaning: '곧 그곳에 갈게.', createdAt: 1 }];
+  const base = createReviewSession(date, [comp('a'), comp('b'), comp('c')], expressions, [], now);
+  assert.equal(base.questions.length, 5);
+  assert.ok(base.questions.some(q => q.source === 'polished'));
+  assert.ok(base.questions.some(q => q.source === 'expression'));
+  let completed = base;
+  for (const q of base.questions) completed = recordReviewAnswer(completed, q.id, answer, now);
+  const extra = createReviewSession(date, [comp('a'), comp('b'), comp('c')], expressions, [completed], now + 1,
+    { extra: true, key: `${date}~extra~123` });
+  assert.equal(extra.questions.length, 1);
+  assert.equal(dailySession([extra, completed], date)?.date, completed.date);
+  assert.equal(reviewStats([extra, completed], date).streak, 1);
+  assert.equal(reviewStats([extra], date).streak, 0);
+  assert.equal(recordReviewAnswer(extra, 'q0', answer, now).completedAt, now);
+});
+
+test('question is at most three sentences in both languages', () => {
+  assert.equal(isShortReviewText('One. Two. Three.'), true);
+  assert.equal(isShortReviewText('One. Two. Three. Four.'), false);
+  assert.equal(isShortReviewText('하나. 둘. 셋. 넷.'), false);
+});
+
+test('AI focus suggestions must come from the saved correction and remain short', () => {
+  const c = { ...comp('long'), polished: 'I should have called you before leaving. I will call tomorrow.',
+    english: 'I should call you before leaving. I call tomorrow.', korean: '떠나기 전에 전화했어야 했어. 내일 전화할게.' };
+  const local = localReviewCandidates([c], []);
+  const selected = focusedReviewCandidates([c], local, [
+    { id: 'long', english: 'I should have called you before leaving.', korean: '떠나기 전에 전화했어야 했어.', focus: 'should have + 과거분사' },
+    { id: 'long', english: 'I should call you before leaving.', korean: '떠나기 전에 전화해야 해.' },
+    { id: 'long', english: 'I will call tomorrow.', korean: '하나. 둘. 셋. 넷.' },
+  ]);
+  assert.equal(selected.length, 1);
+  assert.equal(selected[0].english, 'I should have called you before leaving.');
+  assert.equal(selected[0].focus, 'should have + 과거분사');
 });
 test('growth thresholds, duplicate dates and future records are handled', () => {
   const history = Array.from({ length: 365 }, (_, i) => finished(shiftReviewDate(date, i - 364)));

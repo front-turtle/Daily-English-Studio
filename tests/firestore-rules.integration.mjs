@@ -50,3 +50,20 @@ test('two devices racing to start or answer preserve first committed state', asy
   assert.equal(Object.keys(final.answers).length, 1);
   assert.ok(final.completedAt >= now);
 });
+
+test('short daily and optional one-question records sync separately without changing completion', async () => {
+  const owner = environment.authenticatedContext('owner').firestore();
+  const shortKey = `${date}~short`, extraKey = `${date}~extra~${now}`;
+  const short = { ...base, date: shortKey, mode: 'daily-short', questions: Array.from({ length: 5 }, (_, i) => ({ ...base.questions[0], id: `q${i}` })) };
+  const extra = { ...base, date: extraKey, mode: 'extra' };
+  const shortRef = doc(owner, 'users', 'owner', 'smartReviews', shortKey);
+  const extraRef = doc(owner, 'users', 'owner', 'smartReviews', extraKey);
+  await assertSucceeds(startReviewInDatabase(owner, 'owner', short));
+  await assertFails(setDoc(extraRef, { ...extra, questions: short.questions }));
+  for (let i = 0; i < 5; i++) await assertSucceeds(saveReviewAnswerInDatabase(owner, 'owner', shortKey, `q${i}`, result));
+  assert.ok((await getDoc(shortRef)).data().completedAt);
+  await assertSucceeds(startReviewInDatabase(owner, 'owner', extra));
+  await assertSucceeds(saveReviewAnswerInDatabase(owner, 'owner', extraKey, 'q0', result));
+  assert.ok((await getDoc(shortRef)).data().completedAt);
+  assert.equal(Object.keys((await getDoc(extraRef)).data().answers).length, 1);
+});

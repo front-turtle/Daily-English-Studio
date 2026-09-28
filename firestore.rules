@@ -14,7 +14,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, create, update, delete: if isOwner(userId);
 
-      // One document per day: history grows without filling the user profile.
+      // One short daily document plus optional one-question practice documents.
       match /smartReviews/{date} {
         function isCurrentDay(data) {
           return data.dayStart is int
@@ -26,11 +26,19 @@ service cloud.firestore {
         allow create: if isOwner(userId)
                       && isCurrentDay(request.resource.data)
                       && request.resource.data.date == date
+                      && date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}(~short|~extra~[0-9]+)?$')
                       && request.resource.data.version == 1
                       && request.resource.data.timezone == 'Asia/Seoul'
                       && request.resource.data.questions is list
                       && request.resource.data.questions.size() > 0
                       && request.resource.data.questions.size() <= 5
+                      && (date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                          || (date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}~short$')
+                              && request.resource.data.mode == 'daily-short'
+                              && request.resource.data.questions.size() == 5)
+                          || (date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}~extra~[0-9]+$')
+                              && request.resource.data.mode == 'extra'
+                              && request.resource.data.questions.size() == 1))
                       && request.resource.data.answers == {}
                       && request.resource.data.completedAt == null;
         allow update: if isOwner(userId)
