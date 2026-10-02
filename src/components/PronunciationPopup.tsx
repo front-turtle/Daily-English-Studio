@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Volume2, X, Square } from 'lucide-react';
 
-export function PronunciationPopup() {
+export function PronunciationPopup({ compact = false }: { compact?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -31,7 +31,7 @@ export function PronunciationPopup() {
     } catch { setPlaying(false); setError('음성을 재생하지 못했습니다. 다시 시도해 주세요.'); }
   };
   return <>
-    <button ref={trigger} type="button" onClick={() => { dialog.current?.showModal(); input.current?.focus(); }} className="inline-flex items-center gap-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-2 text-sm font-semibold"><Volume2 className="w-4 h-4" />발음 확인</button>
+    <button ref={trigger} type="button" aria-label="발음 확인" title="영어 발음 확인" onClick={() => { dialog.current?.showModal(); input.current?.focus(); }} className={compact ? 'inline-flex shrink-0 items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100' : 'inline-flex items-center gap-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-2 text-sm font-semibold'}><Volume2 className="w-3.5 h-3.5" /><span className={compact ? 'hidden sm:inline' : ''}>발음 확인</span></button>
     <dialog ref={dialog} aria-labelledby="pronunciation-title" onCancel={e => { e.preventDefault(); close(); }} className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto rounded-2xl p-5 bg-white text-slate-800 border border-slate-200 shadow-xl backdrop:bg-slate-900/40">
       <div className="flex items-center justify-between mb-3"><h2 id="pronunciation-title" className="font-bold text-lg">영어 발음 확인</h2><button type="button" onClick={close} aria-label="발음 확인 닫기" className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button></div>
       <label htmlFor="pronunciation-text" className="text-sm font-semibold">듣고 싶은 영어</label>

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('desktop/mobile center tab, yearly journey and temporary pronunciation dialog', async ({ page }) => {
+test('header pronunciation works from every tab without opening AI tutor', async ({ page }) => {
   await page.addInitScript(() => {
     window.__speechRates = [];
     window.speechSynthesis.speak = utterance => { window.__speechRates.push(utterance.rate); };
@@ -19,7 +19,12 @@ test('desktop/mobile center tab, yearly journey and temporary pronunciation dial
     const center = await page.locator('nav button').nth(2).boundingBox();
     expect(Math.abs(center.x + center.width / 2 - width / 2)).toBeLessThan(3);
   }
-  await page.getByRole('button', { name: 'AI 영어 튜터 열기' }).click();
+  const aiButton = page.getByRole('button', { name: 'AI 영어 튜터 열기' });
+  const pronunciationButton = page.getByRole('button', { name: '발음 확인', exact: true });
+  const aiBox = await aiButton.boundingBox(), pronunciationBox = await pronunciationButton.boundingBox();
+  expect(pronunciationBox.x).toBeGreaterThan(aiBox.x);
+  expect(pronunciationBox.x - (aiBox.x + aiBox.width)).toBeLessThan(20);
+  await expect(pronunciationButton).toBeVisible();
   await page.getByRole('button', { name: '발음 확인', exact: true }).click();
   await page.getByLabel('듣고 싶은 영어').fill('This is a temporary pronunciation test.');
   await page.getByRole('button', { name: '0.75배속', exact: true }).click();
@@ -27,6 +32,8 @@ test('desktop/mobile center tab, yearly journey and temporary pronunciation dial
   await page.getByRole('button', { name: '1.25배속', exact: true }).click();
   expect(await page.evaluate(() => window.__speechRates)).toEqual([0.75, 1.25]);
   await page.getByRole('button', { name: '발음 확인 닫기' }).click();
+  await expect(page.getByRole('heading', { name: '스마트 복습', exact: true })).toBeVisible();
+  await page.locator('nav button').first().click();
   await page.getByRole('button', { name: '발음 확인', exact: true }).click();
   await expect(page.getByLabel('듣고 싶은 영어')).toHaveValue('');
   await page.keyboard.press('Escape');
