@@ -5,6 +5,7 @@ import { DailyComposition, AudioItem, KeyExpression, BackupData } from '../types
 import { AccountModal } from './AccountModal';
 import { InstallGuideModal } from './InstallGuideModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { PronunciationPopup } from './PronunciationPopup';
 
 interface HeaderProps {
   onLogoClick?: () => void;
@@ -60,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div>
             <span className="font-bold text-sm sm:text-lg text-slate-900 tracking-tight whitespace-nowrap">
-              Daily English
+              Daily<span className="hidden min-[360px]:inline"> English</span>
             </span>
           </div>
         </div>
@@ -80,6 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Bot className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">AI 튜터</span>
           </button>
+          <PronunciationPopup compact />
           {/* PWA Install Button (Visible on mobile & desktop until installed) */}
           {!isInstalled && (
             <button
