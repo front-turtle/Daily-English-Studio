@@ -27,6 +27,7 @@ interface SummaryTabProps {
   audioItems: AudioItem[];
   expressions: KeyExpression[];
   onNavigateTab: (tab: ActiveTab, targetDate?: string) => void;
+  onUpdateExpression?: (id: string, updates: Partial<KeyExpression>) => void;
   onUpdateItemBase64?: (id: string, base64: string) => void;
 }
 
@@ -37,6 +38,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   audioItems,
   expressions,
   onNavigateTab,
+  onUpdateExpression,
   onUpdateItemBase64,
 }) => {
   const todayStr = getTodayDateString();
@@ -629,11 +631,40 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
                     {/* Top row: Spoken Count & Date & TTS & Bookmark */}
                     <div className="flex items-center justify-between gap-1 text-xs">
                       <div className="flex items-center gap-1.5">
-                        {item.spokenCount !== undefined && (
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md">
-                            발화 {item.spokenCount}회
+                        <div
+                          className="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-1.5 py-0.5 select-none"
+                          title="발화 횟수 기록"
+                        >
+                          <span className="text-[10px] font-bold text-indigo-700">발화</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const count = item.spokenCount || 0;
+                              if (count > 0) onUpdateExpression?.(item.id, { spokenCount: count - 1 });
+                            }}
+                            disabled={(item.spokenCount || 0) <= 0 || !onUpdateExpression}
+                            className="w-5 h-5 rounded flex items-center justify-center text-indigo-500 hover:bg-indigo-100 hover:text-indigo-800 active:scale-95 disabled:opacity-25 disabled:hover:bg-transparent font-bold transition-all"
+                            aria-label="발화 횟수 1 감소"
+                          >
+                            −
+                          </button>
+                          <span className="font-mono font-bold min-w-[16px] text-center text-[11px] text-indigo-700">
+                            {item.spokenCount || 0}
                           </span>
-                        )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUpdateExpression?.(item.id, {
+                                spokenCount: (item.spokenCount || 0) + 1,
+                              })
+                            }
+                            disabled={!onUpdateExpression}
+                            className="w-5 h-5 rounded flex items-center justify-center bg-indigo-100 hover:bg-indigo-200 text-indigo-700 hover:text-indigo-900 active:scale-95 disabled:opacity-40 font-bold transition-all"
+                            aria-label="발화 횟수 1 추가"
+                          >
+                            +
+                          </button>
+                        </div>
                         <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-mono">
                           <Calendar className="w-2.5 h-2.5 text-slate-500" />
                           {formatCompactDate(item.date, item.createdAt) || item.date}
