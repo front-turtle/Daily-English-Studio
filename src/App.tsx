@@ -742,7 +742,6 @@ export function App() {
             onSaveRecording={handleSaveRecording}
             onDeleteRecording={handleDeleteRecording}
             onDeleteAudioItem={handleDeleteAudioItem}
-            onUpdateExpression={handleUpdateExpression}
             onUpdateItemBase64={handleUpdateItemBase64}
             onUpdateTranscript={handleUpdateAudioTranscript}
           />
@@ -781,6 +780,7 @@ export function App() {
               if (targetDate) setCurrentDate(targetDate);
               setActiveTab(tab);
             }}
+            onUpdateExpression={handleUpdateExpression}
             onUpdateItemBase64={handleUpdateItemBase64}
           />
         </div>
