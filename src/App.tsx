@@ -742,6 +742,7 @@ export function App() {
             onSaveRecording={handleSaveRecording}
             onDeleteRecording={handleDeleteRecording}
             onDeleteAudioItem={handleDeleteAudioItem}
+            onUpdateExpression={handleUpdateExpression}
             onUpdateItemBase64={handleUpdateItemBase64}
             onUpdateTranscript={handleUpdateAudioTranscript}
           />
