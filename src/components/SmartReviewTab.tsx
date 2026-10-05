@@ -170,8 +170,3 @@ export function SmartReviewTab({ uid, today, sessions, ready, error, retry, comp
     </section>
   </div>;
 }
-
-export function ReviewReminder({ today, sessions, ready, open }: { today: string; sessions: ReviewSession[]; ready: boolean; open: () => void }) {
-  const complete = isComplete(dailySession(sessions, today));
-  return <button type="button" onClick={open} className={`w-full mb-5 flex items-center justify-between gap-3 rounded-xl border p-3 text-left ${complete ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-indigo-50 border-indigo-200 text-indigo-900'}`}><span className="text-sm font-semibold">{complete ? '🌱 오늘의 복습 완료 · 내 숲 보러 가기' : '🌱 매일 필수! 오늘의 스마트 복습'}<span className="block text-xs font-normal mt-1">{complete ? '내일도 이어서 키워 주세요.' : ready ? '틀려도 괜찮아요. 오늘 끝내야 연속 기록이 이어져요.' : '내 문장으로 복습하고 성장 기록을 쌓아 보세요.'}</span></span><ChevronRight className="w-5 h-5 shrink-0" /></button>;
-}

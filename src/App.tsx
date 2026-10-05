@@ -15,7 +15,8 @@ import { AudioShadowingTab } from './components/AudioShadowingTab';
 import { KeyExpressionsTab } from './components/KeyExpressionsTab';
 import { SummaryTab } from './components/SummaryTab';
 import { AiTutorTab } from './components/AiTutorTab';
-import { SmartReviewTab, ReviewReminder } from './components/SmartReviewTab';
+import { SmartReviewTab } from './components/SmartReviewTab';
+import { ReviewTabLabel } from './components/ReviewTabLabel';
 import { useSmartReview } from './hooks/useSmartReview';
 import { PenLine, Headphones, BookOpen, CalendarDays } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
@@ -714,7 +715,6 @@ export function App() {
       {/* Main Content Area - keep tabs mounted so state is preserved across tab switching */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-24 sm:pb-28">
         {audioCacheError && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{audioCacheError}</p>}
-        {activeTab !== 'review' && <ReviewReminder today={reviews.today} sessions={reviews.sessions} ready={reviews.ready} open={() => setActiveTab('review')} />}
         <div className={activeTab === 'review' ? 'block' : 'hidden'}>
           <SmartReviewTab key={user?.uid || 'signed-out'} uid={user?.uid} {...reviews}
             compositions={reviewSources?.uid === user?.uid ? reviewSources?.compositions || [] : []}
@@ -836,7 +836,7 @@ export function App() {
           </button>
 
           <button type="button" onClick={() => setActiveTab('review')} className={`min-w-0 flex flex-col items-center justify-center gap-1 py-2 px-0.5 rounded-xl text-xs font-semibold ring-1 ring-emerald-200 ${activeTab === 'review' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500'}`}>
-            <span aria-hidden="true">🌱</span><span className="text-[11px] sm:text-xs whitespace-nowrap">스마트 복습</span>
+            <ReviewTabLabel uid={user?.uid} today={reviews.today} sessions={reviews.sessions} ready={reviews.ready} />
           </button>
           {/* Tab 3: 주요 표현 */}
           <button
