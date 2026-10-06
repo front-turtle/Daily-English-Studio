@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9bd9ff"/><stop offset=".48" stop-color="#eefaff"/><stop offset="1" stop-color="#f9fff9"/></linearGradient>
+    <radialGradient id="sun"><stop offset="0" stop-color="#fff9c7"/><stop offset=".42" stop-color="#ffe88a" stop-opacity=".82"/><stop offset="1" stop-color="#ffd866" stop-opacity="0"/></radialGradient>
+    <linearGradient id="mount" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d8ebf3"/><stop offset="1" stop-color="#769dad"/></linearGradient>
+    <linearGradient id="meadow" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#c7ef94"/><stop offset=".35" stop-color="#baf079"/><stop offset="1" stop-color="#80b977"/></linearGradient>
+    <linearGradient id="forestFloor" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#bde586"/><stop offset=".4" stop-color="#5ba65f"/><stop offset="1" stop-color="#286449"/></linearGradient>
+    <radialGradient id="leaf" cx=".35" cy=".25" r=".75"><stop stop-color="#dff78b"/><stop offset=".4" stop-color="#72cf58"/><stop offset="1" stop-color="#28784a"/></radialGradient>
+    <radialGradient id="leaf2" cx=".35" cy=".25" r=".75"><stop stop-color="#e7f99d"/><stop offset=".4" stop-color="#91de63"/><stop offset="1" stop-color="#2d7e4b"/></radialGradient>
+    <radialGradient id="canopy" cx=".35" cy=".25" r=".75"><stop stop-color="#d7ef7f"/><stop offset=".38" stop-color="#65b852"/><stop offset="1" stop-color="#1e7046"/></radialGradient>
+    <linearGradient id="trunk" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b97949"/><stop offset=".52" stop-color="#7a4b32"/><stop offset="1" stop-color="#4e2d24"/></linearGradient>
+    <radialGradient id="ocean" cx=".36" cy=".24" r=".8"><stop stop-color="#53dcff"/><stop offset=".5" stop-color="#0f8cda"/><stop offset="1" stop-color="#0752a0"/></radialGradient>
+    <linearGradient id="waterfall" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#efffff"/><stop offset=".45" stop-color="#bdf8ff"/><stop offset="1" stop-color="#63dfff"/></linearGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="200%"><feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#164f5b" flood-opacity=".28"/></filter>
+    <filter id="softShadow" x="-40%" y="-40%" width="180%" height="200%"><feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#1b513d" flood-opacity=".23"/></filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="28"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="2" seed="42" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 .04"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <circle cx="1320" cy="220" r="210" fill="url(#sun)" filter="url(#soft)" opacity=".95"/>
+  <circle cx="1320" cy="220" r="58" fill="#fff8cf" opacity=".9"/>
+  <path d="M0 560 L170 335 L270 455 L445 235 L560 485 L700 320 L850 500 L1020 240 L1160 466 L1345 260 L1510 460 L1710 285 L1920 385 L1920 700 L0 700Z" fill="url(#mount)" opacity=".76"/>
+  <path d="M0 650 C240 550 390 640 585 575 C780 510 960 650 1160 570 C1370 487 1550 585 1920 500 L1920 810 L0 810Z" fill="#80b977" opacity=".58"/>
+  <g opacity=".9">
+    <ellipse cx="230" cy="180" rx="160" ry="62" fill="#fff"/><ellipse cx="335" cy="188" rx="110" ry="46" fill="#fff"/>
+    <ellipse cx="1625" cy="155" rx="165" ry="66" fill="#fff"/><ellipse cx="1735" cy="164" rx="118" ry="48" fill="#fff"/>
+  </g>
+  
+        <g filter="url(#shadow)">
+          <ellipse cx="960" cy="810" rx="460" ry="125" fill="url(#meadow)"/>
+          <path d="M720 825 C780 730 855 665 960 646 C1080 625 1196 675 1240 800 C1110 772 1005 786 910 826 C845 853 776 850 720 825Z" fill="#4f8f55" opacity=".36"/>
+        </g>
+        <g id="sprout" filter="url(#softShadow)">
+          <path d="M955 802 C951 732 954 665 960 596" fill="none" stroke="#2d743d" stroke-width="22" stroke-linecap="round"/>
+          <ellipse cx="902" cy="648" rx="80" ry="34" transform="rotate(-28 902 648)" fill="url(#leaf)"/>
+          <ellipse cx="1017" cy="610" rx="84" ry="36" transform="rotate(27 1017 610)" fill="url(#leaf2)"/>
+          <ellipse cx="982" cy="720" rx="62" ry="28" transform="rotate(20 982 720)" fill="#50a84e"/>
+        </g>
+        <g opacity=".86">
+          <circle cx="760" cy="846" r="9" fill="#fff"/><circle cx="779" cy="842" r="8" fill="#f8cf64"/>
+          <circle cx="1135" cy="844" r="8" fill="#ff91bd"/><circle cx="1152" cy="838" r="7" fill="#fff"/>
+        </g>
+  <rect width="1920" height="1080" filter="url(#grain)" opacity=".35" pointer-events="none"/>
+</svg>
