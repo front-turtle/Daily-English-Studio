@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ChevronRight, Download, Leaf, Loader2 } from 'lucide-react';
 import type { DailyComposition, KeyExpression } from '../types';
-import { createReviewSession, dailySession, GROWTH_STAGES, isComplete, isExtra, reviewStats, sessionDay, shiftReviewDate } from '../lib/smartReview';
+import { createReviewSession, dailySession, GROWTH_STAGES, isComplete, isExtra, reviewStats, sessionDay, shiftReviewDate, WORLD_STAGES, worldProgress, worldStageForStreak, worldStageProgress } from '../lib/smartReview';
 import type { ReviewAnswer, ReviewQuestion, ReviewSession } from '../lib/smartReview';
 import { reviewCandidates } from '../lib/reviewCandidates';
 import { saveReviewAnswer, startReview } from '../lib/smartReviewService';
 import { gradeSmartReview } from '../lib/gradeSmartReview';
-import { GrowthScene } from './GrowthScene';
+import { GrowthScene as LivingGarden } from './GrowthScene';
 
 interface Props {
   uid?: string;
@@ -22,6 +22,89 @@ interface Props {
 }
 const sourceLabel = { writing: '내 영작', polished: 'AI 첨삭 · 핵심 수정', expression: '주요 표현' };
 const button = 'rounded-xl px-4 py-3 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed';
+
+
+
+
+function GrowthScene({
+  streak,
+  longest,
+  total,
+  today,
+}: {
+  streak: number;
+  longest: number;
+  total: number;
+  today: string;
+}) {
+  const stage = worldStageForStreak(streak);
+  const stageIndex = WORLD_STAGES.findIndex(item => item.key === stage.key);
+  const stageProgress = worldStageProgress(streak, stage);
+  const yearlyProgress = worldProgress(streak);
+  const nextStage = WORLD_STAGES[stageIndex + 1];
+  const remaining = nextStage
+    ? Math.max(0, nextStage.startDay - streak)
+    : Math.max(0, 365 - streak);
+
+  const stageRanges = ['0~30일', '31~120일', '121~240일', '241~365일'];
+
+  return <div className="space-y-4">
+    <LivingGarden streak={streak} stageName={stage.name} />
+
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
+      <div className="grid grid-cols-4 gap-1">
+        {WORLD_STAGES.map((item, index) => {
+          const achieved = streak >= item.startDay;
+          const current = item.key === stage.key;
+          return <div key={item.key} className="relative flex flex-col items-center text-center">
+            {index < WORLD_STAGES.length - 1 && <div className={`absolute left-[62%] top-6 h-px w-[76%] ${streak >= WORLD_STAGES[index + 1].startDay ? 'bg-emerald-300' : 'bg-slate-200'}`} />}
+            <div className={`relative z-10 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border transition ${current ? 'border-emerald-300 bg-emerald-50 ring-4 ring-emerald-100' : achieved ? 'border-emerald-200 bg-white' : 'border-slate-200 bg-slate-50 opacity-55'}`}>
+              <span className="text-2xl sm:text-3xl">{item.emoji}</span>
+              {achieved && !current && <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] text-white ring-2 ring-white">✓</span>}
+            </div>
+            <span className={`mt-2 text-[11px] sm:text-xs font-bold ${current ? 'text-emerald-700' : 'text-slate-500'}`}>{item.name}</span>
+            <span className="mt-0.5 text-[9px] sm:text-[10px] text-slate-400">{stageRanges[index]}</span>
+          </div>;
+        })}
+      </div>
+    </section>
+
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-lg font-black text-emerald-800">{stage.emoji} 나의 {stage.name}</p>
+          <p className="mt-1 text-sm font-semibold text-slate-500">{stage.subtitle}</p>
+        </div>
+        <div className="shrink-0 text-right text-xs sm:text-sm text-slate-500">
+          최고 <strong className="text-slate-800">{longest}일</strong><br />
+          누적 <strong className="text-slate-800">{total}일</strong>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between text-xs font-bold">
+          <span className="text-emerald-700">{nextStage ? `${nextStage.name}까지 ${remaining}일` : streak >= 365 ? '365일 지구 완성' : `지구 완성까지 ${remaining}일`}</span>
+          <span className="text-slate-500">{stageProgress}%</span>
+        </div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 transition-all" style={{ width: `${stageProgress}%` }} />
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between text-xs font-bold">
+          <span className="text-slate-600">🌍 365일 생태계</span>
+          <span className="text-slate-500">{Math.min(streak, 365)} / 365일</span>
+        </div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-blue-500 transition-all" style={{ width: `${yearlyProgress}%` }} />
+        </div>
+      </div>
+    </section>
+
+    <span className="sr-only">{today} 기준 {stage.name} 단계, 연속 {streak}일</span>
+  </div>;
+}
 
 function QuestionCard({ uid, session, question, onSaved }: { uid: string; session: ReviewSession; question: ReviewQuestion; onSaved: (s: ReviewSession) => void }) {
   const [text, setText] = useState('');
@@ -122,15 +205,25 @@ export function SmartReviewTab({ uid, today, sessions, ready, error, retry, comp
   const history = dailySession(allSessions, historyDate);
   const extraHistory = allSessions.filter(s => sessionDay(s) === historyDate && isExtra(s));
   return <div className="space-y-5">
-    <div className="flex flex-wrap justify-between items-end gap-2"><div><h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Leaf className="text-emerald-600" />스마트 복습</h1><p className="text-sm text-slate-500 mt-1">매일 한 번, 내 문장으로 키우는 영어의 숲</p></div><span className="text-xs text-slate-500">{today} · 한국 시간 기준</span></div>
-    <section className="rounded-2xl border border-emerald-200 bg-white p-4 sm:p-6 space-y-4">
-      <GrowthScene streak={stats.streak} stageName={stats.stage.name} />
-      <div className="flex justify-between gap-3"><div><p className="text-sm font-semibold text-emerald-700">나의 {stats.stage.name}</p><p className="text-3xl font-black mt-1">{stats.streak}<span className="text-sm font-semibold text-slate-500 ml-2">일 연속 복습</span></p></div><div className="text-right text-sm text-slate-500">최고 <strong className="text-slate-800">{stats.longest}일</strong><br />누적 완료 <strong className="text-slate-800">{stats.total}일</strong></div></div>
-      <div><div className="flex justify-between text-sm mb-2"><strong className="text-emerald-800">{stats.next ? `${stats.next.name}까지 ${stats.remaining}일!` : '365일의 지구를 만들었어요. 계속 키워요!'}</strong><span className="text-slate-500">{stats.progress}%</span></div><div role="progressbar" aria-label="다음 성장 단계 진행률" aria-valuenow={stats.progress} aria-valuemin={0} aria-valuemax={100} className="h-2.5 bg-emerald-50 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${stats.progress}%` }} /></div></div>
-      <div className="rounded-xl bg-emerald-50 p-3 text-sm"><div className="flex justify-between gap-2"><strong>🌍 1년의 숲 만들기</strong><span>{Math.min(stats.streak, 365)} / 365일</span></div><progress aria-label="365일 성장 여정" value={Math.min(stats.streak, 365)} max={365} className="w-full h-2 mt-2 accent-emerald-600" /><p className="text-xs text-emerald-800 mt-1">{stats.streak < 365 ? `생명의 지구까지 ${365 - stats.streak}일 · ${Math.floor(Math.min(stats.streak, 365) / 365 * 100)}%` : '1년 달성! 연속 복습과 동물 친구들은 계속 함께해요.'}</p></div>
-      <details className="rounded-xl border border-slate-100 p-3"><summary className="cursor-pointer text-sm font-semibold">새싹부터 지구까지 · 16단계 여정 보기</summary><div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">{GROWTH_STAGES.map((stage, i) => <div key={stage.days} className={`text-center text-xs rounded-xl p-2 ${i === stats.stageIndex ? 'bg-emerald-100 ring-1 ring-emerald-300' : 'bg-slate-50 text-slate-500'}`}><div className="text-xl mb-1">{stage.emoji}</div><strong className="block">{stage.name}</strong><span>{stage.days === 0 ? '시작' : `${stage.days}일`}{i === stats.stageIndex ? ' · 현재' : stats.streak >= stage.days ? ' · 달성' : ''}</span></div>)}</div></details>
-      <p className="text-xs leading-relaxed text-slate-500">매일 짧은 5문항을 기록하면 완료. 오답은 연속 기록에 영향을 주지 않아요. 완료 뒤 한 문장씩 더 풀어도 됩니다. 하루라도 완료하지 않으면 연속 기록은 0일부터 다시 시작합니다.</p>
-    </section>
+    <div className="flex items-end justify-between gap-3 px-1">
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900"><Leaf className="h-6 w-6 text-emerald-600" />스마트 복습</h1>
+        <p className="mt-1 text-sm text-slate-500">오늘의 복습으로 세계를 키워요.</p>
+      </div>
+      <span className="text-xs font-semibold text-slate-400">{today}</span>
+    </div>
+    <GrowthScene
+      streak={stats.streak}
+      longest={stats.longest}
+      total={stats.total}
+      today={today}
+    />
+    <details className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <summary className="cursor-pointer text-sm font-semibold">새싹부터 지구까지 · 16단계 여정 보기</summary>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+        {GROWTH_STAGES.map((stage, i) => <div key={stage.days} className={`text-center text-xs rounded-xl p-2 ${i === stats.stageIndex ? 'bg-emerald-100 ring-1 ring-emerald-300' : 'bg-slate-50 text-slate-500'}`}><div className="text-xl mb-1">{stage.emoji}</div><strong className="block">{stage.name}</strong><span>{stage.days === 0 ? '시작' : `${stage.days}일`}{i === stats.stageIndex ? ' · 현재' : stats.streak >= stage.days ? ' · 달성' : ''}</span></div>)}
+      </div>
+    </details>
     {!uid ? <div className="rounded-2xl bg-indigo-50 p-5 text-sm text-indigo-900">상단 계정에서 Google 로그인 후 시작해 주세요. 복습 기록과 성장 단계가 PC·모바일에 함께 저장됩니다.</div> : <>
       {!ready && <div role="status" className="rounded-xl bg-slate-100 p-4 text-sm">{error || '서버의 복습 기록을 확인하고 있어요. 인터넷 연결이 필요합니다.'}<button type="button" onClick={retry} className="ml-3 underline">다시 연결</button></div>}
       {actionError && <p role="alert" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">{actionError}</p>}

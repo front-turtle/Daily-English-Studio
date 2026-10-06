@@ -4,3 +4,5 @@
 @media(prefers-reduced-motion:reduce){.garden-wrapper *, .garden-wrapper *::before{animation:none!important;transition:none!important}.garden-raindrop{top:calc(15% + var(--particle)*4%);transform:rotate(12deg)}}
 .garden-bottomline p{padding:6px 10px;border:1px solid #ffffff80;border-radius:20px;background:#f7fbeaCF;color:#28513c;text-shadow:none}.garden-weather--rain .garden-topline h2,.garden-weather--rain .garden-eyebrow{color:#294e44}.garden-weather--rain .garden-raindrop{will-change:transform}.garden-butterfly{will-change:transform}
 .garden-tree{position:absolute;bottom:0;left:var(--tree-position);width:clamp(110px,19vw,180px);margin:0;transform:translateX(-50%) scale(var(--tree-scale));height:100%}.garden-plant{position:absolute;bottom:0}.garden-plant--sprout{top:auto}.garden-trees{left:22%;right:22%}@media(max-width:600px){.garden-trees{left:24%;right:24%}.garden-tree{width:120px;margin:0}}
+
+@media(min-width:601px){.living-garden{height:430px}}@media(min-width:1024px){.living-garden{height:500px}}

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd2ff"/><stop offset=".48" stop-color="#eafaff"/><stop offset="1" stop-color="#f9fff9"/></linearGradient>
+    <radialGradient id="sun"><stop offset="0" stop-color="#fff9c7"/><stop offset=".42" stop-color="#ffe88a" stop-opacity=".82"/><stop offset="1" stop-color="#ffd866" stop-opacity="0"/></radialGradient>
+    <linearGradient id="mount" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d8ebf3"/><stop offset="1" stop-color="#769dad"/></linearGradient>
+    <linearGradient id="meadow" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#c7ef94"/><stop offset=".35" stop-color="#9fdb65"/><stop offset="1" stop-color="#6aa567"/></linearGradient>
+    <linearGradient id="forestFloor" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#bde586"/><stop offset=".4" stop-color="#5ba65f"/><stop offset="1" stop-color="#286449"/></linearGradient>
+    <radialGradient id="leaf" cx=".35" cy=".25" r=".75"><stop stop-color="#dff78b"/><stop offset=".4" stop-color="#72cf58"/><stop offset="1" stop-color="#28784a"/></radialGradient>
+    <radialGradient id="leaf2" cx=".35" cy=".25" r=".75"><stop stop-color="#e7f99d"/><stop offset=".4" stop-color="#91de63"/><stop offset="1" stop-color="#2d7e4b"/></radialGradient>
+    <radialGradient id="canopy" cx=".35" cy=".25" r=".75"><stop stop-color="#d7ef7f"/><stop offset=".38" stop-color="#65b852"/><stop offset="1" stop-color="#1e7046"/></radialGradient>
+    <linearGradient id="trunk" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b97949"/><stop offset=".52" stop-color="#7a4b32"/><stop offset="1" stop-color="#4e2d24"/></linearGradient>
+    <radialGradient id="ocean" cx=".36" cy=".24" r=".8"><stop stop-color="#53dcff"/><stop offset=".5" stop-color="#0f8cda"/><stop offset="1" stop-color="#0752a0"/></radialGradient>
+    <linearGradient id="waterfall" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#efffff"/><stop offset=".45" stop-color="#bdf8ff"/><stop offset="1" stop-color="#63dfff"/></linearGradient>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="200%"><feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#164f5b" flood-opacity=".28"/></filter>
+    <filter id="softShadow" x="-40%" y="-40%" width="180%" height="200%"><feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#1b513d" flood-opacity=".23"/></filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="28"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="2" seed="28" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 .04"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <circle cx="1360" cy="210" r="210" fill="url(#sun)" filter="url(#soft)" opacity=".95"/>
+  <circle cx="1360" cy="210" r="58" fill="#fff8cf" opacity=".9"/>
+  <path d="M0 560 L170 335 L270 455 L445 235 L560 485 L700 320 L850 500 L1020 240 L1160 466 L1345 260 L1510 460 L1710 285 L1920 385 L1920 700 L0 700Z" fill="url(#mount)" opacity=".76"/>
+  <path d="M0 650 C240 550 390 640 585 575 C780 510 960 650 1160 570 C1370 487 1550 585 1920 500 L1920 810 L0 810Z" fill="#6aa567" opacity=".58"/>
+  <g opacity=".9">
+    <ellipse cx="230" cy="180" rx="160" ry="62" fill="#fff"/><ellipse cx="335" cy="188" rx="110" ry="46" fill="#fff"/>
+    <ellipse cx="1625" cy="155" rx="165" ry="66" fill="#fff"/><ellipse cx="1735" cy="164" rx="118" ry="48" fill="#fff"/>
+  </g>
+  
+        <g filter="url(#shadow)">
+          <ellipse cx="980" cy="820" rx="500" ry="140" fill="url(#meadow)"/>
+          <path d="M705 840 C770 720 855 657 960 630 C1104 592 1223 656 1270 822 C1140 790 1018 804 922 840 C830 875 754 869 705 840Z" fill="#39794b" opacity=".4"/>
+        </g>
+        <g filter="url(#softShadow)">
+          <path d="M1025 790 C1002 690 1019 598 1011 503 C1005 425 984 362 992 285 C1032 346 1060 395 1068 475 C1076 558 1040 666 1070 790Z" fill="url(#trunk)"/>
+          <path d="M1030 520 C970 484 914 430 880 365" fill="none" stroke="#825036" stroke-width="34" stroke-linecap="round"/>
+          <path d="M1044 506 C1100 458 1150 408 1175 350" fill="none" stroke="#6d412e" stroke-width="30" stroke-linecap="round"/>
+          <circle cx="850" cy="336" r="118" fill="url(#canopy)"/>
+          <circle cx="950" cy="274" r="134" fill="url(#canopy)"/>
+          <circle cx="1075" cy="275" r="142" fill="url(#canopy)"/>
+          <circle cx="1180" cy="352" r="120" fill="url(#canopy)"/>
+          <circle cx="1030" cy="385" r="162" fill="url(#canopy)"/>
+        </g>
+        <g opacity=".92">
+          <path d="M725 820 l45 -155 l47 155z" fill="#2f7449"/><path d="M1270 830 l50 -170 l54 170z" fill="#347b4c"/>
+        </g>
+  <rect width="1920" height="1080" filter="url(#grain)" opacity=".35" pointer-events="none"/>
+</svg>

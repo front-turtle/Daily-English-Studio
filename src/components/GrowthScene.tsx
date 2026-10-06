@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { CloudRain, Pause, Play, Sun, Wind } from 'lucide-react';
-import { forestLife } from '../lib/smartReview';
+import { forestLife, worldStageForStreak } from '../lib/smartReview';
 import './GrowthScene.css';
 
 type Weather = 'sun' | 'wind' | 'rain';
@@ -61,17 +61,18 @@ export function GrowthScene({ streak, stageName }: { streak: number; stageName: 
     const timer = window.setInterval(() => setWeather(w => w === 'sun' ? 'wind' : w === 'wind' ? 'rain' : 'sun'), 18000);
     return () => clearInterval(timer);
   }, [automatic, still]);
-  const trees = streak < 21 ? 1 : Math.min(7, 3 + Math.floor(streak / 45));
+  const world = worldStageForStreak(streak);
+  const landscape = world.key === 'sprout' ? '/Daily-English-Studio/garden-meadow-v1.webp' : `/Daily-English-Studio/assets/review-world-${world.key}.svg`;
   return <div className="garden-wrapper" ref={root}>
     <div className={`living-garden garden-weather--${weather} ${still ? 'garden-still' : ''}`} data-testid="living-garden" data-weather={weather} data-paused={still}>
-      <div className="garden-landscape" aria-hidden="true" />
+      <div className="garden-landscape" style={{ backgroundImage: `url("${landscape}")` }} aria-hidden="true" />
       <div className="garden-light" aria-hidden="true" />
       <div className="garden-cloud garden-cloud--one" aria-hidden="true" /><div className="garden-cloud garden-cloud--two" aria-hidden="true" />
       <div className="garden-scene-description" role="img" aria-label={`${stageName} 성장 풍경. ${animals.length ? animals.map(a => a.name).join(', ') + '와 함께 살고 있어요.' : '첫 동물 친구를 기다리는 새싹입니다.'}`}>
-        <div className="garden-trees" aria-hidden="true">{Array.from({ length: trees }, (_, i) => <div className="garden-tree" key={i} style={{ '--tree-index': i, '--tree-position': (trees === 1 ? 50 : i / (trees - 1) * 100) + '%', '--tree-scale': i % 2 ? .86 : 1 } as React.CSSProperties}><Plant kind={streak < 7 ? 'sprout' : streak >= 120 && i % 2 === 0 ? 'palm' : 'tree'} seed={`${seed}-${i}`} /></div>)}</div>
+        {world.key === 'sprout' && <div className="garden-trees" aria-hidden="true"><div className="garden-tree" style={{ '--tree-position': '50%', '--tree-scale': 1 } as React.CSSProperties}><Plant kind="sprout" seed={`${seed}-sprout`} /></div></div>}
         {streak >= 3 && <><Butterfly variant={1} />{streak >= 21 && <Butterfly variant={2} />}</>}
         <div className="garden-animals" aria-hidden="true">{animals.filter(a => a.name !== '나비').slice(-6).map((a, i) => <span key={a.name} title={`${a.days}일 · ${a.name}`} className={`garden-animal ${['꿀벌', '새', '부엉이', '앵무새', '독수리'].includes(a.name) ? 'garden-animal--flying' : ''}`} style={{ '--animal-index': i } as React.CSSProperties}>{a.emoji}</span>)}</div>
-        {streak >= 240 && <span className="garden-planet" aria-hidden="true">{streak >= 365 ? '🌍' : '🌏'}</span>}
+        {false && streak >= 240 && <span className="garden-planet" aria-hidden="true">{streak >= 365 ? '🌍' : '🌏'}</span>}
       </div>
       <div className="garden-weather-effects" aria-hidden="true">
         {Array.from({ length: 16 }, (_, i) => <i className="garden-raindrop" key={`rain-${i}`} style={{ '--particle': i } as React.CSSProperties} />)}

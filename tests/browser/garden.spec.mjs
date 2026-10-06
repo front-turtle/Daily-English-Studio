@@ -38,7 +38,7 @@ for (const width of [1280, 375, 320]) {
     for (const days of [0, 7, 14, 21, 30, 45, 60, 90, 120, 150, 180, 210, 240, 300, 365]) {
       await page.evaluate(days => window.showGarden(days, '성장 단계'), days);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await expect(page.locator('.garden-plant').first()).toBeVisible();
+      await expect(page.getByTestId('living-garden')).toBeVisible();
     }
     const asset = await page.request.get('/Daily-English-Studio/garden-meadow-v1.webp');
     expect(asset.ok()).toBe(true);
