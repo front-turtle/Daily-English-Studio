@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createReviewSession, dailySession, focusedReviewCandidates, forestLife, GROWTH_STAGES, isComplete, isShortReviewText, localReviewCandidates, recordReviewAnswer, reviewDate, reviewStats, shiftReviewDate } from '../src/lib/smartReview.ts';
+import { createReviewSession, dailySession, focusedReviewCandidates, forestLife, GROWTH_STAGES, isComplete, isShortReviewText, localReviewCandidates, recordReviewAnswer, reviewDate, reviewStats, shiftReviewDate, WORLD_STAGES, worldProgress, worldStageForStreak, worldStageProgress } from '../src/lib/smartReview.ts';
 import type { ReviewAnswer, ReviewSession } from '../src/lib/smartReview.ts';
 
 const date = '2026-09-26';
@@ -153,4 +153,31 @@ test('growth thresholds, duplicate dates and future records are handled', () => 
   assert.equal(reviewStats(history, date).progress, 100);
   const broken = reviewStats(history, shiftReviewDate(date, 2));
   assert.equal(forestLife(broken.streak).animals.length, 0);
+});
+
+
+test('365-day world uses four major growth environments with bounded progress', () => {
+  assert.deepEqual(WORLD_STAGES.map(stage => [stage.name, stage.startDay, stage.endDay]), [
+    ['새싹', 0, 30],
+    ['나무', 31, 120],
+    ['숲', 121, 240],
+    ['지구', 241, 365],
+  ]);
+  assert.equal(worldStageForStreak(0).name, '새싹');
+  assert.equal(worldStageForStreak(30).name, '새싹');
+  assert.equal(worldStageForStreak(31).name, '나무');
+  assert.equal(worldStageForStreak(120).name, '나무');
+  assert.equal(worldStageForStreak(121).name, '숲');
+  assert.equal(worldStageForStreak(240).name, '숲');
+  assert.equal(worldStageForStreak(241).name, '지구');
+  assert.equal(worldStageForStreak(365).name, '지구');
+  assert.equal(worldStageForStreak(500).name, '지구');
+  assert.equal(worldStageProgress(0), 0);
+  assert.equal(worldStageProgress(30), 100);
+  assert.equal(worldStageProgress(120), 100);
+  assert.equal(worldStageProgress(240), 100);
+  assert.equal(worldStageProgress(365), 100);
+  assert.equal(worldProgress(0), 0);
+  assert.equal(worldProgress(365), 100);
+  assert.equal(worldProgress(500), 100);
 });
