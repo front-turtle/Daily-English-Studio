@@ -29,7 +29,7 @@ function GrowthScene({ streak, stageName, stageIndex }: { streak: number; stageN
   const rainy = streak > 0 && (weatherKey === 4 || weatherKey === 9);
   const windy = weatherKey === 2 || weatherKey === 5 || weatherKey === 7 || rainy;
   const visibleAnimals = animals.slice(-6);
-  const worldImage = `${import.meta.env.BASE_URL}assets/smart-review-world.svg`;
+  const worldImage = new URL('assets/smart-review-world.svg', document.baseURI).toString();
 
   return <div className="space-y-2">
     <style>{`
