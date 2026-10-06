@@ -46,10 +46,13 @@ function GrowthScene({
   today: string;
 }) {
   const { animals } = forestLife(streak);
-  const weatherKey = streak % 11;
-  const rainy = streak > 0 && (weatherKey === 4 || weatherKey === 9);
-  const windy = weatherKey === 2 || weatherKey === 5 || weatherKey === 7 || rainy;
-  const visibleAnimals = animals.slice(-6);
+  const weatherSeed = [...today].reduce((sum, char) => sum + char.charCodeAt(0), 0) + streak * 17;
+  const weatherKey = weatherSeed % 13;
+  const rainy = weatherKey === 3 || weatherKey === 9;
+  const windy = rainy || [1, 5, 8, 11].includes(weatherKey);
+  const strongWind = weatherKey === 5 || weatherKey === 11;
+  const visibleAnimals = animals.filter(animal => animal.name !== '나비').slice(-5);
+  const butterflyCount = streak >= 30 ? 3 : streak >= 7 ? 2 : streak >= 3 ? 1 : 0;
   const worldImage = new URL('assets/smart-review-world.svg', document.baseURI).toString();
   const yearlyProgress = Math.floor((Math.min(streak, 365) / 365) * 100);
   const macroStages = [
@@ -69,6 +72,50 @@ function GrowthScene({
         0% { transform: translate3d(-42px,-18px,0) rotate(0deg); opacity: 0; }
         14% { opacity: .8; }
         100% { transform: translate3d(470px,245px,0) rotate(470deg); opacity: 0; }
+      }
+      @keyframes review-branch-sway {
+        0%,100% { transform: rotate(-1.2deg) translateX(0); }
+        45% { transform: rotate(1.6deg) translateX(2px); }
+        70% { transform: rotate(.4deg) translateX(0); }
+      }
+      @keyframes review-branch-sway-strong {
+        0%,100% { transform: rotate(-2.5deg) translateX(-1px); }
+        40% { transform: rotate(3.5deg) translateX(5px); }
+        68% { transform: rotate(-.6deg) translateX(1px); }
+      }
+      @keyframes review-sprout-sway {
+        0%,100% { transform: rotate(-2deg); }
+        50% { transform: rotate(2.8deg); }
+      }
+      @keyframes review-sprout-sway-strong {
+        0%,100% { transform: rotate(-4deg); }
+        45% { transform: rotate(5.5deg); }
+        75% { transform: rotate(1deg); }
+      }
+      @keyframes review-butterfly-path-a {
+        0%,100% { transform: translate3d(0,0,0) rotate(-5deg); }
+        18% { transform: translate3d(34px,-20px,0) rotate(7deg); }
+        42% { transform: translate3d(58px,8px,0) rotate(-2deg); }
+        68% { transform: translate3d(18px,28px,0) rotate(-8deg); }
+        84% { transform: translate3d(-16px,8px,0) rotate(4deg); }
+      }
+      @keyframes review-butterfly-path-b {
+        0%,100% { transform: translate3d(0,0,0) rotate(4deg); }
+        22% { transform: translate3d(-32px,18px,0) rotate(-7deg); }
+        48% { transform: translate3d(-10px,-24px,0) rotate(5deg); }
+        72% { transform: translate3d(30px,-8px,0) rotate(9deg); }
+      }
+      @keyframes review-wing-left {
+        0%,100% { transform: rotateY(18deg) rotateZ(-18deg) scaleX(1); }
+        50% { transform: rotateY(78deg) rotateZ(-6deg) scaleX(.55); }
+      }
+      @keyframes review-wing-right {
+        0%,100% { transform: rotateY(-18deg) rotateZ(18deg) scaleX(1); }
+        50% { transform: rotateY(-78deg) rotateZ(6deg) scaleX(.55); }
+      }
+      @keyframes review-rain-mist {
+        0%,100% { opacity: .08; transform: translateX(-2%); }
+        50% { opacity: .18; transform: translateX(2%); }
       }
       @keyframes review-fly-a {
         0%,100% { transform: translate3d(0,0,0) rotate(-5deg); }
@@ -96,8 +143,18 @@ function GrowthScene({
       }
       .review-world-photo { animation: review-world-float 16s ease-in-out infinite; }
       .review-world-glow { animation: review-glow 5.5s ease-in-out infinite; }
+      .review-branch { transform-origin: 10% 12%; animation: ${strongWind ? 'review-branch-sway-strong 3.4s' : 'review-branch-sway 6.8s'} ease-in-out infinite; }
+      .review-branch-right { transform-origin: 92% 12%; animation-delay: -1.7s; }
+      .review-sprout-live { transform-origin: 50% 100%; animation: ${strongWind ? 'review-sprout-sway-strong 2.8s' : 'review-sprout-sway 5.2s'} ease-in-out infinite; }
+      .review-butterfly-wing-left { transform-origin: 100% 50%; animation: review-wing-left .22s ease-in-out infinite; }
+      .review-butterfly-wing-right { transform-origin: 0% 50%; animation: review-wing-right .22s ease-in-out infinite; }
+      .review-rain-mist { animation: review-rain-mist 6s ease-in-out infinite; }
+      .review-butterfly { perspective: 70px; }
+      .review-butterfly-a .review-butterfly-wing { background: linear-gradient(135deg,#ffbd56,#ff746d); }
+      .review-butterfly-b .review-butterfly-wing { background: linear-gradient(135deg,#9a84ff,#d58cff); }
+      .review-butterfly-c .review-butterfly-wing { background: linear-gradient(135deg,#68d5ff,#4c8cff); }
       @media (prefers-reduced-motion: reduce) {
-        .review-world-photo,.review-world-glow,.review-leaf,.review-animal,.review-rain { animation: none !important; }
+        .review-world-photo,.review-world-glow,.review-leaf,.review-animal,.review-rain,.review-branch,.review-sprout-live,.review-butterfly,.review-butterfly-wing-left,.review-butterfly-wing-right,.review-rain-mist { animation: none !important; }
       }
     `}</style>
 
@@ -107,12 +164,52 @@ function GrowthScene({
         alt=""
         aria-hidden="true"
         className="review-world-photo absolute inset-[-2%] h-[104%] w-[104%] object-cover object-center select-none pointer-events-none"
-        style={{ filter: `saturate(${1 + Math.min(stageIndex, 10) * 0.01}) brightness(${0.99 + Math.min(stageIndex, 10) * 0.003})` }}
+        style={{ filter: rainy ? `saturate(${.92 + Math.min(stageIndex, 10) * .008}) brightness(.88) contrast(1.02)` : `saturate(${1 + Math.min(stageIndex, 10) * 0.01}) brightness(${0.99 + Math.min(stageIndex, 10) * 0.003})` }}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/20 via-transparent to-white/5 pointer-events-none" />
-      <div className="review-world-glow absolute left-[40%] top-[18%] h-36 w-36 rounded-full bg-amber-200/30 blur-3xl pointer-events-none" />
+      <div className={rainy ? 'absolute inset-0 bg-gradient-to-b from-slate-700/15 via-slate-500/5 to-emerald-950/20 pointer-events-none' : 'absolute inset-0 bg-gradient-to-t from-emerald-950/20 via-transparent to-white/5 pointer-events-none'} />
+      {!rainy && <div className="review-world-glow absolute left-[40%] top-[18%] h-36 w-36 rounded-full bg-amber-200/30 blur-3xl pointer-events-none" />}
 
-      {windy && Array.from({ length: 7 }, (_, i) => (
+      <svg className={'review-branch absolute -left-8 -top-8 h-40 w-44 sm:h-52 sm:w-56 pointer-events-none ' + (windy ? 'opacity-90' : 'opacity-72')} viewBox="0 0 220 180" aria-hidden="true">
+        <path d="M-12 36 C45 46 86 66 138 116" fill="none" stroke="#527a42" strokeWidth="9" strokeLinecap="round" opacity=".85" />
+        {[[38,49,-22],[69,62,18],[93,82,-28],[121,102,19],[53,78,-44],[103,58,36]].map(([x,y,r], i) =>
+          <ellipse key={i} cx={x} cy={y} rx="24" ry="10" transform={'rotate(' + r + ' ' + x + ' ' + y + ')'} fill={i % 2 ? '#82c85d' : '#5fae50'} opacity=".92" />
+        )}
+      </svg>
+      <svg className={'review-branch review-branch-right absolute -right-9 -top-6 h-36 w-40 sm:h-48 sm:w-52 pointer-events-none ' + (windy ? 'opacity-85' : 'opacity-66')} viewBox="0 0 220 180" aria-hidden="true">
+        <path d="M232 32 C177 46 141 67 90 119" fill="none" stroke="#4f7842" strokeWidth="9" strokeLinecap="round" opacity=".84" />
+        {[[182,48,24],[154,63,-18],[127,84,28],[101,105,-20],[169,79,43],[117,60,-34]].map(([x,y,r], i) =>
+          <ellipse key={i} cx={x} cy={y} rx="23" ry="10" transform={'rotate(' + r + ' ' + x + ' ' + y + ')'} fill={i % 2 ? '#78bf58' : '#62ad4e'} opacity=".9" />
+        )}
+      </svg>
+
+      <svg className="review-sprout-live absolute bottom-5 left-[16%] h-20 w-16 sm:h-28 sm:w-20 pointer-events-none drop-shadow-md" viewBox="0 0 80 120" aria-hidden="true">
+        <path d="M41 112 C39 83 41 55 42 30" fill="none" stroke="#2e7d42" strokeWidth="6" strokeLinecap="round" />
+        <ellipse cx="28" cy="48" rx="20" ry="10" transform="rotate(-28 28 48)" fill="#72cc50" />
+        <ellipse cx="55" cy="35" rx="21" ry="10" transform="rotate(27 55 35)" fill="#9be36a" />
+        <ellipse cx="45" cy="78" rx="17" ry="8" transform="rotate(18 45 78)" fill="#4fa74a" opacity=".9" />
+      </svg>
+
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        {Array.from({ length: butterflyCount }, (_, i) => {
+          const positions = [['24%','28%'], ['67%','26%'], ['48%','50%']];
+          const [left, top] = positions[i];
+          return <div
+            key={'butterfly-' + i}
+            className={'review-butterfly review-butterfly-' + String.fromCharCode(97 + i) + ' absolute h-8 w-10 sm:h-10 sm:w-12'}
+            style={{
+              left,
+              top,
+              animation: (i % 2 ? 'review-butterfly-path-b' : 'review-butterfly-path-a') + ' ' + (6.5 + i * 1.4) + 's ease-in-out ' + (-i * 1.1) + 's infinite',
+            }}
+          >
+            <span className="review-butterfly-wing review-butterfly-wing-left absolute left-0 top-1/2 h-6 w-5 -translate-y-1/2 rounded-[70%_30%_65%_35%] shadow-sm" />
+            <span className="absolute left-1/2 top-1/2 h-5 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-800/80" />
+            <span className="review-butterfly-wing review-butterfly-wing-right absolute right-0 top-1/2 h-6 w-5 -translate-y-1/2 rounded-[30%_70%_35%_65%] shadow-sm" />
+          </div>;
+        })}
+      </div>
+
+      {windy && Array.from({ length: strongWind ? 10 : 7 }, (_, i) => (
         <span
           key={`leaf-${i}`}
           aria-hidden="true"
@@ -120,19 +217,20 @@ function GrowthScene({
           style={{
             left: `${-10 + i * 13}%`,
             top: `${7 + (i % 4) * 12}%`,
-            animation: `review-leaf-drift ${8 + i * .8}s linear ${i * .9}s infinite`,
+            animation: `review-leaf-drift ${strongWind ? 5.8 + i * .55 : 8 + i * .8}s linear ${i * .72}s infinite`,
           }}
         >🍃</span>
       ))}
 
-      {rainy && <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-900/[0.04]">
-        {Array.from({ length: 26 }, (_, i) => (
+      {rainy && <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-900/[0.035]">
+        <div className="review-rain-mist absolute inset-x-[-6%] bottom-[-8%] h-2/5 rounded-[50%] bg-white/35 blur-3xl" />
+        {Array.from({ length: 30 }, (_, i) => (
           <span
             key={`rain-${i}`}
-            className="review-rain absolute top-0 h-14 w-px bg-gradient-to-b from-transparent via-white/80 to-transparent rotate-[10deg]"
+            className="review-rain absolute top-0 h-14 w-px bg-gradient-to-b from-transparent via-white/75 to-transparent rotate-[10deg]"
             style={{
-              left: `${(i * 15) % 104}%`,
-              animation: `review-rain ${1.1 + (i % 5) * .14}s linear ${-(i % 7) * .17}s infinite`,
+              left: `${(i * 13) % 104}%`,
+              animation: `review-rain ${1.08 + (i % 6) * .13}s linear ${-(i % 8) * .16}s infinite`,
             }}
           />
         ))}
@@ -140,7 +238,7 @@ function GrowthScene({
 
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         {visibleAnimals.map((animal, i) => {
-          const flying = ['나비','꿀벌','새','앵무새','독수리'].includes(animal.name);
+          const flying = ['꿀벌','새','앵무새','독수리'].includes(animal.name);
           const positions = [
             ['25%','28%'], ['78%','25%'], ['70%','48%'], ['30%','58%'], ['57%','18%'], ['48%','62%'],
           ];
@@ -328,7 +426,7 @@ export function SmartReviewTab({ uid, today, sessions, ready, error, retry, comp
         <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900"><Leaf className="h-6 w-6 text-emerald-600" />스마트 복습</h1>
         <p className="mt-1 text-sm text-slate-500">오늘의 복습으로 세계를 키워요.</p>
       </div>
-      <span className="text-xs font-semibold text-slate-400">${today}</span>
+      <span className="text-xs font-semibold text-slate-400">{today}</span>
     </div>
     <GrowthScene
       streak={stats.streak}
