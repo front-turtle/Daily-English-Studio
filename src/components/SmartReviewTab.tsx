@@ -22,23 +22,261 @@ interface Props {
 const sourceLabel = { writing: '내 영작', polished: 'AI 첨삭 · 핵심 수정', expression: '주요 표현' };
 const button = 'rounded-xl px-4 py-3 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed';
 
-function GrowthScene({ streak, stageName }: { streak: number; stageName: string }) {
+
+function GrowthScene({ streak, stageName, stageIndex }: { streak: number; stageName: string; stageIndex: number }) {
   const { animals, nextAnimal } = forestLife(streak);
-  const trees = streak < 21 ? 1 : Math.min(11, 3 + Math.floor(streak / 30));
+  const weatherKey = streak % 11;
+  const rainy = streak > 0 && (weatherKey === 4 || weatherKey === 9);
+  const windy = weatherKey === 2 || weatherKey === 5 || weatherKey === 7 || rainy;
+  const showTree = stageIndex >= 2;
+  const showForest = stageIndex >= 4;
+  const showPlanetGlow = stageIndex >= 13;
+  const visibleAnimals = animals.slice(-6);
+
   return <div className="space-y-2">
-    <div className="relative h-56 sm:h-64 overflow-hidden rounded-2xl bg-gradient-to-b from-sky-100 via-emerald-50 to-emerald-200" role="img" aria-label={`${stageName} 성장 풍경. ${animals.length ? animals.map(a => a.name).join(', ') + '와 함께 살고 있어요.' : '첫 동물 친구를 기다리는 새싹입니다.'}`}>
-      <div className="absolute right-6 top-4 text-4xl" aria-hidden="true">{streak >= 240 ? streak >= 365 ? '🌍' : '🌏' : '☀️'}</div>
-      <div className="absolute bottom-0 inset-x-0 h-24 bg-emerald-300/40 rounded-t-[50%]" />
-      <div className="absolute bottom-4 right-0 h-5 w-2/5 rounded-full bg-sky-300/60 rotate-[-8deg]" />
-      <div className="absolute inset-x-4 top-9 flex items-end justify-center -space-x-3 select-none" aria-hidden="true">
-        {Array.from({ length: trees }, (_, i) => <span key={i} className={i % 2 ? 'text-6xl sm:text-7xl pt-4' : 'text-7xl sm:text-8xl'}>{streak < 7 ? '🌱' : streak < 14 ? '🌿' : streak >= 120 && i % 2 === 0 ? '🌴' : i % 3 ? '🌲' : '🌳'}</span>)}
+    <style>{`
+      @keyframes review-scene-breathe {
+        0%,100% { transform: scale(1.015) translate3d(0,0,0); }
+        50% { transform: scale(1.04) translate3d(-0.6%, -0.4%, 0); }
+      }
+      @keyframes review-tree-sway {
+        0%,100% { transform: rotate(-0.7deg); }
+        50% { transform: rotate(0.9deg); }
+      }
+      @keyframes review-sprout-sway {
+        0%,100% { transform: rotate(-2.2deg); }
+        50% { transform: rotate(2.6deg); }
+      }
+      @keyframes review-waterfall {
+        from { stroke-dashoffset: 0; opacity: .5; }
+        50% { opacity: .95; }
+        to { stroke-dashoffset: -34; opacity: .5; }
+      }
+      @keyframes review-cloud-drift {
+        0%,100% { transform: translateX(-2%); }
+        50% { transform: translateX(2.5%); }
+      }
+      @keyframes review-leaf-drift {
+        0% { transform: translate3d(-40px,-18px,0) rotate(0deg); opacity: 0; }
+        12% { opacity: .75; }
+        100% { transform: translate3d(460px,250px,0) rotate(480deg); opacity: 0; }
+      }
+      @keyframes review-fly-a {
+        0%,100% { transform: translate3d(0,0,0) rotate(-5deg); }
+        25% { transform: translate3d(28px,-18px,0) rotate(6deg); }
+        55% { transform: translate3d(4px,15px,0) rotate(-4deg); }
+        80% { transform: translate3d(-24px,-7px,0) rotate(3deg); }
+      }
+      @keyframes review-fly-b {
+        0%,100% { transform: translate3d(0,0,0) scale(1); }
+        35% { transform: translate3d(-34px,13px,0) scale(1.04); }
+        70% { transform: translate3d(18px,-20px,0) scale(.96); }
+      }
+      @keyframes review-ground-bob {
+        0%,100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+      @keyframes review-rain {
+        0% { transform: translateY(-42px) translateX(0); opacity: 0; }
+        15% { opacity: .55; }
+        100% { transform: translateY(320px) translateX(-45px); opacity: 0; }
+      }
+      @keyframes review-glow {
+        0%,100% { opacity: .34; transform: scale(.96); }
+        50% { opacity: .72; transform: scale(1.05); }
+      }
+      .review-scene-photo { animation: review-scene-breathe 13s ease-in-out infinite; }
+      .review-tree { transform-origin: 510px 298px; animation: review-tree-sway ${windy ? '3.8s' : '7s'} ease-in-out infinite; }
+      .review-sprout { transform-origin: 380px 318px; animation: review-sprout-sway ${windy ? '2.6s' : '5.4s'} ease-in-out infinite; }
+      .review-clouds { animation: review-cloud-drift 12s ease-in-out infinite; }
+      .review-waterfall { stroke-dasharray: 9 8; animation: review-waterfall 2.8s linear infinite; }
+      .review-planet-glow { transform-origin: center; animation: review-glow 4.8s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) {
+        .review-scene-photo,.review-tree,.review-sprout,.review-clouds,.review-waterfall,.review-planet-glow,
+        .review-leaf,.review-animal,.review-rain { animation: none !important; }
+      }
+    `}</style>
+
+    <div
+      className="relative h-[300px] sm:h-[360px] overflow-hidden rounded-[28px] border border-white/70 bg-sky-100 shadow-[0_24px_70px_-30px_rgba(15,118,110,0.55)] isolate"
+      role="img"
+      aria-label={`${stageName} 성장 풍경. ${animals.length ? animals.map(a => a.name).join(', ') + '와 함께 살고 있어요.' : '첫 동물 친구를 기다리는 새싹입니다.'}`}
+    >
+      <svg className="review-scene-photo absolute inset-[-2%] h-[104%] w-[104%]" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <linearGradient id="reviewSky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8bd4ff" />
+            <stop offset="48%" stopColor="#d9f3ff" />
+            <stop offset="100%" stopColor="#eefcf4" />
+          </linearGradient>
+          <linearGradient id="reviewMountain" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#c8dfef" />
+            <stop offset="100%" stopColor="#7fa4b7" />
+          </linearGradient>
+          <linearGradient id="reviewHill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8dbf83" />
+            <stop offset="100%" stopColor="#467a5a" />
+          </linearGradient>
+          <radialGradient id="reviewOcean" cx="38%" cy="28%" r="78%">
+            <stop offset="0%" stopColor="#4bd2ff" />
+            <stop offset="52%" stopColor="#087bd6" />
+            <stop offset="100%" stopColor="#064997" />
+          </radialGradient>
+          <radialGradient id="reviewIsland" cx="45%" cy="18%" r="86%">
+            <stop offset="0%" stopColor="#c8f08c" />
+            <stop offset="43%" stopColor="#58a95c" />
+            <stop offset="100%" stopColor="#1e7049" />
+          </radialGradient>
+          <linearGradient id="reviewTrunk" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#7b492e" />
+            <stop offset="52%" stopColor="#a86d3f" />
+            <stop offset="100%" stopColor="#4f2b22" />
+          </linearGradient>
+          <radialGradient id="reviewLeaf" cx="40%" cy="28%" r="70%">
+            <stop offset="0%" stopColor="#d5ef72" />
+            <stop offset="40%" stopColor="#64b94f" />
+            <stop offset="100%" stopColor="#1d6a42" />
+          </radialGradient>
+          <linearGradient id="reviewWater" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#eaffff" />
+            <stop offset="100%" stopColor="#7de7ff" />
+          </linearGradient>
+          <filter id="reviewSoftShadow" x="-30%" y="-30%" width="160%" height="180%">
+            <feDropShadow dx="0" dy="16" stdDeviation="18" floodColor="#0f5b69" floodOpacity=".3" />
+          </filter>
+          <filter id="reviewGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="18" />
+          </filter>
+        </defs>
+
+        <rect width="900" height="520" fill="url(#reviewSky)" />
+        <circle cx="425" cy="132" r="88" fill="#fff7b1" opacity=".38" filter="url(#reviewGlow)" />
+        <circle cx="425" cy="132" r="42" fill="#fff8c7" opacity=".78" />
+        <path d="M0 305 L120 176 L190 261 L294 128 L370 290 L452 190 L548 294 L660 144 L785 290 L900 198 L900 365 L0 365Z" fill="url(#reviewMountain)" opacity=".74" />
+        <path d="M0 327 C120 278 182 327 294 287 C410 247 495 335 610 286 C723 238 805 282 900 248 L900 405 L0 405Z" fill="url(#reviewHill)" opacity=".8" />
+        <path d="M0 358 C142 326 231 369 348 350 C505 325 633 365 900 332 L900 520 L0 520Z" fill="#8fd9d2" opacity=".48" />
+        <path d="M0 380 C145 354 251 393 389 374 C553 351 687 388 900 360" fill="none" stroke="#f1ffff" strokeWidth="8" opacity=".38" />
+
+        {showPlanetGlow && <circle className="review-planet-glow" cx="474" cy="360" r="153" fill="#aef6ff" opacity=".55" filter="url(#reviewGlow)" />}
+
+        <g filter="url(#reviewSoftShadow)">
+          <circle cx="474" cy="365" r="126" fill="url(#reviewOcean)" />
+          <path d="M389 301 C413 276 440 280 456 298 C475 320 470 344 445 355 C423 365 406 351 392 332 C381 318 378 309 389 301Z" fill="#68bd62" opacity=".95" />
+          <path d="M492 285 C531 270 565 285 579 309 C593 335 573 357 549 357 C522 356 509 338 487 329 C468 321 468 296 492 285Z" fill="#78c85d" opacity=".94" />
+          <path d="M536 370 C558 353 589 356 600 377 C611 399 597 423 574 427 C551 431 529 410 527 391 C526 382 529 376 536 370Z" fill="#4fae53" opacity=".92" />
+          <path d="M407 394 C423 375 446 378 457 395 C468 412 457 434 439 439 C420 443 401 428 399 412 C398 404 401 399 407 394Z" fill="#89ca60" opacity=".88" />
+          <ellipse cx="474" cy="269" rx="178" ry="78" fill="url(#reviewIsland)" />
+          <path d="M311 266 C345 238 393 223 449 219 C529 213 590 231 634 270 C591 262 557 269 530 284 C484 310 411 313 366 292 C346 282 327 274 311 266Z" fill="#2f7e4c" opacity=".58" />
+          <path d="M332 287 C359 330 375 363 393 402" fill="none" stroke="url(#reviewWater)" strokeWidth="13" strokeLinecap="round" className="review-waterfall" />
+          <path d="M611 284 C594 324 588 359 575 404" fill="none" stroke="url(#reviewWater)" strokeWidth="12" strokeLinecap="round" className="review-waterfall" />
+        </g>
+
+        <g className="review-clouds" fill="#fff" opacity=".9">
+          <ellipse cx="328" cy="424" rx="74" ry="35" />
+          <ellipse cx="380" cy="439" rx="93" ry="45" />
+          <ellipse cx="538" cy="438" rx="92" ry="44" />
+          <ellipse cx="612" cy="420" rx="69" ry="33" />
+        </g>
+
+        <g className="review-sprout">
+          <path d="M382 314 C380 292 381 275 383 253" fill="none" stroke="#2f7f37" strokeWidth="7" strokeLinecap="round" />
+          <ellipse cx="369" cy="266" rx="25" ry="12" transform="rotate(-29 369 266)" fill="#74d447" />
+          <ellipse cx="399" cy="255" rx="25" ry="12" transform="rotate(28 399 255)" fill="#9ee756" />
+        </g>
+
+        <g className="review-tree" opacity={showTree ? 1 : .18}>
+          <path d="M516 302 C502 267 514 236 508 202 C504 177 497 156 500 125 C520 157 535 174 539 203 C542 232 531 264 541 299Z" fill="url(#reviewTrunk)" />
+          <path d="M517 213 C490 195 466 177 452 151" fill="none" stroke="#7b492e" strokeWidth="13" strokeLinecap="round" />
+          <path d="M525 210 C551 190 570 170 581 147" fill="none" stroke="#6b3f29" strokeWidth="12" strokeLinecap="round" />
+          <path d="M514 173 C495 153 484 135 477 116" fill="none" stroke="#815033" strokeWidth="10" strokeLinecap="round" />
+          <circle cx="453" cy="139" r="47" fill="url(#reviewLeaf)" />
+          <circle cx="493" cy="111" r="54" fill="url(#reviewLeaf)" />
+          <circle cx="541" cy="112" r="58" fill="url(#reviewLeaf)" />
+          <circle cx="582" cy="141" r="49" fill="url(#reviewLeaf)" />
+          <circle cx="518" cy="154" r="64" fill="url(#reviewLeaf)" />
+        </g>
+
+        {showForest && <g opacity=".94">
+          <path d="M305 281 l20 -66 l20 66z" fill="#2b7d4f" />
+          <path d="M645 286 l18 -72 l22 72z" fill="#1f7146" />
+          <path d="M281 292 l14 -50 l17 50z" fill="#3d9257" />
+          <path d="M680 295 l15 -56 l18 56z" fill="#438e55" />
+        </g>}
+
+        {Array.from({ length: 18 }, (_, i) => {
+          const x = 334 + (i * 29) % 285;
+          const y = 272 + (i % 4) * 13;
+          const colors = ['#fff', '#ffd76a', '#ff8fb8', '#c598ff'];
+          return <g key={i} opacity={stageIndex >= 3 ? .95 : .45}>
+            <circle cx={x} cy={y} r="4.2" fill={colors[i % colors.length]} />
+            <circle cx={x} cy={y + 4} r="1.4" fill="#f1b84a" />
+          </g>;
+        })}
+      </svg>
+
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_35%,rgba(5,49,58,0.08)_100%)] pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-emerald-950/20 to-transparent pointer-events-none" />
+
+      {windy && Array.from({ length: 7 }, (_, i) => (
+        <span
+          key={`leaf-${i}`}
+          aria-hidden="true"
+          className="review-leaf absolute text-lg sm:text-xl drop-shadow-sm pointer-events-none"
+          style={{
+            left: `${-5 + i * 12}%`,
+            top: `${8 + (i % 4) * 13}%`,
+            animation: `review-leaf-drift ${7.2 + i * .8}s linear ${i * .9}s infinite`,
+          }}
+        >🍃</span>
+      ))}
+
+      {rainy && <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-700/[0.035]">
+        {Array.from({ length: 24 }, (_, i) => (
+          <span
+            key={`rain-${i}`}
+            className="review-rain absolute top-0 h-12 w-px bg-gradient-to-b from-transparent via-white/80 to-transparent rotate-[10deg]"
+            style={{
+              left: `${(i * 17) % 102}%`,
+              animation: `review-rain ${1.05 + (i % 5) * .15}s linear ${-(i % 7) * .18}s infinite`,
+            }}
+          />
+        ))}
+      </div>}
+
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        {visibleAnimals.map((animal, i) => {
+          const flying = ['나비','꿀벌','새','앵무새','독수리'].includes(animal.name);
+          const positions = [
+            ['22%','25%'], ['76%','24%'], ['68%','48%'], ['31%','55%'], ['57%','19%'], ['48%','62%'],
+          ];
+          const [left, top] = positions[i % positions.length];
+          return <span
+            key={animal.name}
+            title={`${animal.days}일 · ${animal.name}`}
+            className="review-animal absolute text-2xl sm:text-3xl drop-shadow-[0_5px_6px_rgba(15,23,42,.28)]"
+            style={{
+              left, top,
+              animation: flying
+                ? `${i % 2 ? 'review-fly-b' : 'review-fly-a'} ${4.2 + i * .7}s ease-in-out ${-i * .6}s infinite`
+                : `review-ground-bob ${3.6 + i * .5}s ease-in-out ${-i * .4}s infinite`,
+            }}
+          >{animal.emoji}</span>;
+        })}
       </div>
-      <div className="absolute bottom-2 inset-x-3 grid grid-cols-5 gap-x-2 gap-y-1 items-center justify-items-center" aria-hidden="true">
-        {animals.map(a => <span key={a.name} title={`${a.days}일 · ${a.name}`} className="text-2xl sm:text-3xl drop-shadow-sm">{a.emoji}</span>)}
+
+      <div className="absolute left-3.5 top-3.5 sm:left-5 sm:top-5 flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-lg backdrop-blur-xl">
+        <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,.13)]" />
+        {stageName}
       </div>
-      {!animals.length && <p className="absolute inset-x-0 bottom-5 text-center text-xs text-emerald-800">3일 연속 복습하면 첫 나비가 찾아와요</p>}
+      <div className="absolute right-3.5 top-3.5 sm:right-5 sm:top-5 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-lg backdrop-blur-xl">
+        {rainy ? '🌧️' : windy ? '🍃' : '☀️'}
+      </div>
     </div>
-    <div className="flex flex-wrap justify-between gap-1 text-xs text-emerald-800"><span>함께 사는 동물 친구 {animals.length}마리</span><span>{nextAnimal ? `${nextAnimal.emoji} ${nextAnimal.name}까지 ${nextAnimal.days - streak}일` : '🐋 1년 동안 생명 가득한 지구를 만들었어요!'}</span></div>
+
+    <div className="flex flex-wrap justify-between gap-1 text-xs text-emerald-800">
+      <span>함께 사는 동물 친구 {animals.length}마리</span>
+      <span>{nextAnimal ? `${nextAnimal.emoji} ${nextAnimal.name}까지 ${nextAnimal.days - streak}일` : '🐋 생명 가득한 지구가 완성됐어요!'}</span>
+    </div>
   </div>;
 }
 
@@ -143,7 +381,7 @@ export function SmartReviewTab({ uid, today, sessions, ready, error, retry, comp
   return <div className="space-y-5">
     <div className="flex flex-wrap justify-between items-end gap-2"><div><h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Leaf className="text-emerald-600" />스마트 복습</h1><p className="text-sm text-slate-500 mt-1">매일 한 번, 내 문장으로 키우는 영어의 숲</p></div><span className="text-xs text-slate-500">{today} · 한국 시간 기준</span></div>
     <section className="rounded-2xl border border-emerald-200 bg-white p-4 sm:p-6 space-y-4">
-      <GrowthScene streak={stats.streak} stageName={stats.stage.name} />
+      <GrowthScene streak={stats.streak} stageName={stats.stage.name} stageIndex={stats.stageIndex} />
       <div className="flex justify-between gap-3"><div><p className="text-sm font-semibold text-emerald-700">나의 {stats.stage.name}</p><p className="text-3xl font-black mt-1">{stats.streak}<span className="text-sm font-semibold text-slate-500 ml-2">일 연속 복습</span></p></div><div className="text-right text-sm text-slate-500">최고 <strong className="text-slate-800">{stats.longest}일</strong><br />누적 완료 <strong className="text-slate-800">{stats.total}일</strong></div></div>
       <div><div className="flex justify-between text-sm mb-2"><strong className="text-emerald-800">{stats.next ? `${stats.next.name}까지 ${stats.remaining}일!` : '365일의 지구를 만들었어요. 계속 키워요!'}</strong><span className="text-slate-500">{stats.progress}%</span></div><div role="progressbar" aria-label="다음 성장 단계 진행률" aria-valuenow={stats.progress} aria-valuemin={0} aria-valuemax={100} className="h-2.5 bg-emerald-50 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${stats.progress}%` }} /></div></div>
       <div className="rounded-xl bg-emerald-50 p-3 text-sm"><div className="flex justify-between gap-2"><strong>🌍 1년의 숲 만들기</strong><span>{Math.min(stats.streak, 365)} / 365일</span></div><progress aria-label="365일 성장 여정" value={Math.min(stats.streak, 365)} max={365} className="w-full h-2 mt-2 accent-emerald-600" /><p className="text-xs text-emerald-800 mt-1">{stats.streak < 365 ? `생명의 지구까지 ${365 - stats.streak}일 · ${Math.floor(Math.min(stats.streak, 365) / 365 * 100)}%` : '1년 달성! 연속 복습과 동물 친구들은 계속 함께해요.'}</p></div>
