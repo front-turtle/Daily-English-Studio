@@ -1,0 +1,602 @@
+
+.garden-wrapper {
+  color: #2d5847;
+  min-width: 0
+}
+.living-garden {
+  position: relative;
+  height: 330px;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #e3eee4;
+  box-shadow: inset 0 0 0 1px #3156400a,0 8px 28px #4561470a
+}
+.garden-landscape {
+  position: absolute;
+  inset: 0;
+  background: url('/Daily-English-Studio/garden-meadow-v1.webp') center 63%/cover no-repeat;
+  transition: filter 3s;
+  z-index: -3
+}
+.garden-light {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(180deg,#f6faf2c4 0%,#f8fbef15 40%,#164c3020 100%);
+  pointer-events: none
+}
+.garden-topline {
+  position: absolute;
+  top: 23px;
+  left: 26px;
+  right: 23px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px
+}
+.garden-eyebrow {
+  font-size: 9px;
+  letter-spacing: 2.3px;
+  font-weight: 700;
+  color: #59876e
+}
+.garden-topline h2 {
+  font-size: 17px;
+  letter-spacing: -.6px;
+  line-height: 1.5;
+  margin: 4px 0;
+  font-weight: 650;
+  color: #244d39
+}
+.garden-pause {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  background: #ffffff8f;
+  border: 1px solid #ffffffaa;
+  color: #436653;
+  cursor: pointer
+}
+.garden-pause:disabled {
+  opacity: .5;
+  cursor: default
+}
+.garden-bottomline {
+  position: absolute;
+  bottom: 19px;
+  left: 26px;
+  right: 23px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #234f3b
+}
+.garden-bottomline p {
+  font-size: 11px;
+  margin: 0;
+  text-shadow: 0 1px 5px #ffffff
+}
+.garden-weather-label {
+  font-size: 10px;
+  white-space: nowrap;
+  background: #fafff0b8;
+  border: 1px solid #ffffff9c;
+  border-radius: 30px;
+  padding: 5px 10px
+}
+.garden-scene-description {
+  position: absolute;
+  inset: 0
+}
+.garden-trees {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: 17%;
+  height: 64%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end
+}
+.garden-tree {
+  width: 180px;
+  height: 100%;
+  flex: 0 1 180px;
+  min-width: 0;
+  margin: 0 -14px;
+  animation: garden-arrive 1.6s ease both;
+  animation-delay: calc(var(--tree-index)*.1s);
+  transform: scale(calc(1 - mod(var(--tree-index), 2)*.1));
+  transform-origin: bottom center
+}
+.garden-plant {
+  height: 100%;
+  width: 100%;
+  overflow: visible;
+  filter: drop-shadow(3px 7px 3px #294f3420)
+}
+.garden-sway {
+  transform-box: view-box;
+  transform-origin: 50% 92%;
+  animation: garden-sway 7s ease-in-out infinite
+}
+.garden-plant--sprout {
+  height: 112%;
+  position: relative;
+  top: -12%
+}
+.garden-weather--wind .garden-sway {
+  animation-name: garden-gust;
+  animation-duration: 3s
+}
+.garden-weather--rain .garden-landscape {
+  filter: saturate(.82) brightness(.88)
+}
+.garden-weather--rain .garden-light {
+  background: linear-gradient(180deg,#dde9ecb0,#b4d1cb15 65%,#164c3040)
+}
+.garden-cloud {
+  position: absolute;
+  top: 26%;
+  width: 130px;
+  height: 20px;
+  background: #fff;
+  filter: blur(13px);
+  border-radius: 50%;
+  opacity: .23;
+  animation: garden-cloud 70s linear infinite;
+  z-index: -1
+}
+.garden-cloud--one {
+  left: 5%
+}
+.garden-cloud--two {
+  left: 70%;
+  top: 34%;
+  width: 90px;
+  animation-delay: -30s
+}
+.garden-butterfly {
+  position: absolute;
+  left: 36%;
+  top: 42%;
+  width: 32px;
+  height: 29px;
+  filter: drop-shadow(1px 3px 2px #324a3830);
+  animation: garden-flight 15s ease-in-out infinite
+}
+.garden-butterfly--2 {
+  left: 64%;
+  top: 38%;
+  width: 26px;
+  animation-delay: -7s;
+  animation-direction: reverse
+}
+.garden-butterfly svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible
+}
+.garden-wings {
+  transform-origin: 25px 24px;
+  animation: garden-flutter .34s ease-in-out infinite
+}
+.garden-animals {
+  position: absolute;
+  bottom: 19%;
+  left: 19%;
+  right: 19%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 6px
+}
+.garden-animal {
+  font-size: 25px;
+  filter: drop-shadow(0 3px 2px #27493230);
+  animation: garden-animal 9s ease-in-out infinite;
+  animation-delay: calc(var(--animal-index)*-1.3s)
+}
+.garden-animal--flying {
+  position: relative;
+  bottom: 45px;
+  animation-name: garden-bird
+}
+.garden-planet {
+  position: absolute;
+  top: 23%;
+  right: 11%;
+  font-size: 50px;
+  animation: garden-float 9s ease-in-out infinite
+}
+.garden-weather-effects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none
+}
+.garden-raindrop {
+  position: absolute;
+  top: -20px;
+  left: calc(var(--particle)*6.4%);
+  width: 1px;
+  height: 16px;
+  border-radius: 2px;
+  background: linear-gradient(transparent,#efffffaa);
+  opacity: 0
+}
+.garden-weather--rain .garden-raindrop {
+  opacity: 1;
+  animation: garden-rain 1.2s linear infinite;
+  animation-delay: calc(var(--particle)*-.17s)
+}
+.garden-pollen {
+  position: absolute;
+  left: calc(15% + var(--particle)*13%);
+  top: calc(40% + var(--particle)*6%);
+  height: 4px;
+  width: 4px;
+  border-radius: 50%;
+  background: #ffffdc;
+  box-shadow: 0 0 7px #fffad7;
+  animation: garden-pollen 11s ease-in-out infinite;
+  animation-delay: calc(var(--particle)*-2s)
+}
+.garden-weather--rain .garden-pollen {
+  display: none
+}
+.garden-wind {
+  position: absolute;
+  left: -20%;
+  top: calc(36% + var(--particle)*15%);
+  height: 25px;
+  width: 140px;
+  border-top: 1px solid #fffff0a0;
+  border-radius: 50%;
+  opacity: 0
+}
+.garden-weather--wind .garden-wind {
+  animation: garden-wind 5s linear infinite;
+  animation-delay: calc(var(--particle)*-1.6s)
+}
+.garden-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 13px
+}
+.garden-companions {
+  font-size: 11px;
+  color: #6e887b
+}
+.garden-companions strong {
+  color: #315e49;
+  font-weight: 600;
+  margin-left: 3px
+}
+.garden-weather-controls {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 30px;
+  background: #f2f6f3
+}
+.garden-weather-controls button {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 25px;
+  border-radius: 20px;
+  border: 0;
+  font-size: 10px;
+  background: transparent;
+  color: #799183;
+  cursor: pointer
+}
+.garden-weather-controls button:first-child {
+  padding: 0 8px
+}
+.garden-weather-controls button[aria-pressed=true] {
+  background: #fff;
+  color: #397354;
+  box-shadow: 0 1px 4px #274d3014
+}
+.garden-next {
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 4px 0 0;
+  color: #5d826d
+}
+.garden-next span {
+  color: #93a496;
+  margin-left: 4px
+}
+.garden-wrapper button:focus-visible {
+  outline: 2px solid #4b8d69;
+  outline-offset: 3px
+}
+.garden-still * {
+  animation-play-state: paused!important
+}
+.garden-still .garden-tree {
+  animation: none
+}
+.garden-still .garden-raindrop {
+  top: calc(15% + var(--particle)*4%);
+  transform: rotate(12deg)
+}
+@keyframes garden-sway {
+  0%,100% {
+    transform: rotate(-1.2deg)
+  }
+  50% {
+    transform: rotate(1.8deg)
+  }
+}
+@keyframes garden-gust {
+  0%,100% {
+    transform: rotate(-2deg)
+  }
+  40% {
+    transform: rotate(5deg)
+  }
+  65% {
+    transform: rotate(2deg)
+  }
+}
+@keyframes garden-arrive {
+  from {
+    opacity: 0;
+    translate: 0 9px
+  }
+  to {
+    opacity: 1;
+    translate: 0 0
+  }
+}
+@keyframes garden-flight {
+  0%,100% {
+    transform: translate(0,0) rotate(-8deg)
+  }
+  25% {
+    transform: translate(70px,-25px) rotate(10deg)
+  }
+  50% {
+    transform: translate(115px,15px) rotate(-4deg)
+  }
+  75% {
+    transform: translate(-35px,30px) rotate(-15deg)
+  }
+}
+@keyframes garden-flutter {
+  0%,100% {
+    transform: scaleX(1)
+  }
+  50% {
+    transform: scaleX(.35)
+  }
+}
+@keyframes garden-animal {
+  0%,70%,100% {
+    transform: translateY(0) rotate(0)
+  }
+  80% {
+    transform: translateY(-3px) rotate(-3deg)
+  }
+  90% {
+    transform: translateY(0) rotate(2deg)
+  }
+}
+@keyframes garden-bird {
+  0%,100% {
+    transform: translate(0,0)
+  }
+  50% {
+    transform: translate(16px,-10px)
+  }
+}
+@keyframes garden-float {
+  0%,100% {
+    transform: translateY(0) rotate(-5deg)
+  }
+  50% {
+    transform: translateY(-8px) rotate(5deg)
+  }
+}
+@keyframes garden-rain {
+  from {
+    transform: translate(0,-20px) rotate(12deg)
+  }
+  to {
+    transform: translate(-70px,390px) rotate(12deg)
+  }
+}
+@keyframes garden-pollen {
+  0%,100% {
+    opacity: 0;
+    transform: translate(0,0)
+  }
+  40% {
+    opacity: .7
+  }
+  80% {
+    opacity: 0;
+    transform: translate(24px,-35px)
+  }
+}
+@keyframes garden-wind {
+  0% {
+    opacity: 0;
+    transform: translateX(0)
+  }
+  20%,70% {
+    opacity: .45
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(1100px)
+  }
+}
+@keyframes garden-cloud {
+  from {
+    transform: translateX(-130px)
+  }
+  to {
+    transform: translateX(900px)
+  }
+}
+@media(max-width:600px) {
+  .living-garden {
+    height: 300px;
+    border-radius: 18px
+  }
+  .garden-landscape {
+    background-position: 50% 62%
+  }
+  .garden-topline {
+    top: 19px;
+    left: 18px;
+    right: 16px
+  }
+  .garden-topline h2 {
+    font-size: 15px
+  }
+  .garden-eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.8px
+  }
+  .garden-bottomline {
+    left: 18px;
+    right: 16px;
+    bottom: 15px;
+    gap: 6px
+  }
+  .garden-bottomline p {
+    font-size: 10px;
+    max-width: 190px
+  }
+  .garden-weather-label {
+    font-size: 9px;
+    padding: 4px 7px
+  }
+  .garden-trees {
+    left: 12%;
+    right: 12%;
+    bottom: 19%;
+    height: 59%
+  }
+  .garden-tree {
+    margin: 0 -7px
+  }
+  .garden-animal {
+    font-size: 19px
+  }
+  .garden-animals {
+    left: 10%;
+    right: 10%;
+    bottom: 21%
+  }
+  .garden-planet {
+    font-size: 32px;
+    right: 8%;
+    top: 31%
+  }
+  .garden-butterfly {
+    left: 23%;
+    width: 26px
+  }
+  .garden-butterfly--2 {
+    left: 60%
+  }
+  .garden-next span {
+    display: none
+  }
+  .garden-companions {
+    font-size: 10px
+  }
+  .garden-toolbar {
+    gap: 4px
+  }
+  .garden-weather-controls {
+    gap: 1px
+  }
+  .garden-weather-controls button {
+    min-width: 25px
+  }
+  .garden-pollen:nth-of-type(n+20) {
+    display: none
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .garden-wrapper *, .garden-wrapper *::before {
+    animation: none!important;
+    transition: none!important
+  }
+  .garden-raindrop {
+    top: calc(15% + var(--particle)*4%);
+    transform: rotate(12deg)
+  }
+}
+.garden-bottomline p {
+  padding: 6px 10px;
+  border: 1px solid #ffffff80;
+  border-radius: 20px;
+  background: #f7fbeaCF;
+  color: #28513c;
+  text-shadow: none
+}
+.garden-weather--rain .garden-topline h2,.garden-weather--rain .garden-eyebrow {
+  color: #294e44
+}
+.garden-weather--rain .garden-raindrop {
+  will-change: transform
+}
+.garden-butterfly {
+  will-change: transform
+}
+.garden-tree {
+  position: absolute;
+  bottom: 0;
+  left: var(--tree-position);
+  width: clamp(110px,19vw,180px);
+  margin: 0;
+  transform: translateX(-50%) scale(var(--tree-scale));
+  height: 100%
+}
+.garden-plant {
+  position: absolute;
+  bottom: 0
+}
+.garden-plant--sprout {
+  top: auto
+}
+.garden-trees {
+  left: 22%;
+  right: 22%
+}
+@media(max-width:600px) {
+  .garden-trees {
+    left: 24%;
+    right: 24%
+  }
+  .garden-tree {
+    width: 120px;
+    margin: 0
+  }
+}
+@media(min-width:601px) {
+  .living-garden {
+    height: 430px
+  }
+}
+@media(min-width:1024px) {
+  .living-garden {
+    height: 500px
+  }
+}
+
