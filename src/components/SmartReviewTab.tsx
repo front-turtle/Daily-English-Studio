@@ -23,6 +23,7 @@ const sourceLabel = { writing: '내 영작', polished: 'AI 첨삭 · 핵심 수�
 const button = 'rounded-xl px-4 py-3 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed';
 
 
+
 function GrowthScene({
   streak,
   stageName,
@@ -58,189 +59,169 @@ function GrowthScene({
     { days: 365, label: '지구', emoji: '🌍' },
   ];
 
-  return <section className="relative overflow-hidden rounded-[30px] border border-white/70 bg-sky-100 shadow-[0_28px_90px_-36px_rgba(15,118,110,.55)]">
+  return <div className="space-y-3">
     <style>{`
       @keyframes review-world-float {
-        0%,100% { transform: scale(1.035) translate3d(0,0,0); }
-        50% { transform: scale(1.07) translate3d(-0.7%,-0.8%,0); }
+        0%,100% { transform: scale(1.01) translate3d(0,0,0); }
+        50% { transform: scale(1.035) translate3d(-0.35%,-0.35%,0); }
       }
       @keyframes review-leaf-drift {
-        0% { transform: translate3d(-50px,-20px,0) rotate(0deg); opacity: 0; }
-        12% { opacity: .92; }
-        100% { transform: translate3d(520px,290px,0) rotate(520deg); opacity: 0; }
+        0% { transform: translate3d(-42px,-18px,0) rotate(0deg); opacity: 0; }
+        14% { opacity: .8; }
+        100% { transform: translate3d(470px,245px,0) rotate(470deg); opacity: 0; }
       }
       @keyframes review-fly-a {
         0%,100% { transform: translate3d(0,0,0) rotate(-5deg); }
-        25% { transform: translate3d(32px,-18px,0) rotate(6deg); }
-        55% { transform: translate3d(4px,16px,0) rotate(-4deg); }
-        80% { transform: translate3d(-24px,-7px,0) rotate(3deg); }
+        28% { transform: translate3d(25px,-15px,0) rotate(5deg); }
+        58% { transform: translate3d(3px,13px,0) rotate(-3deg); }
+        82% { transform: translate3d(-20px,-6px,0) rotate(3deg); }
       }
       @keyframes review-fly-b {
         0%,100% { transform: translate3d(0,0,0) scale(1); }
-        35% { transform: translate3d(-34px,13px,0) scale(1.05); }
-        70% { transform: translate3d(18px,-20px,0) scale(.96); }
+        35% { transform: translate3d(-28px,11px,0) scale(1.04); }
+        72% { transform: translate3d(15px,-17px,0) scale(.97); }
       }
       @keyframes review-ground-bob {
         0%,100% { transform: translateY(0); }
-        50% { transform: translateY(-4px); }
+        50% { transform: translateY(-3px); }
       }
       @keyframes review-rain {
-        0% { transform: translateY(-42px) translateX(0); opacity: 0; }
-        15% { opacity: .65; }
-        100% { transform: translateY(520px) translateX(-60px); opacity: 0; }
+        0% { transform: translateY(-50px) translateX(0); opacity: 0; }
+        14% { opacity: .55; }
+        100% { transform: translateY(440px) translateX(-48px); opacity: 0; }
       }
       @keyframes review-glow {
-        0%,100% { opacity: .18; transform: scale(.96); }
-        50% { opacity: .54; transform: scale(1.06); }
+        0%,100% { opacity: .16; transform: scale(.96); }
+        50% { opacity: .42; transform: scale(1.05); }
       }
-      .review-world-photo { animation: review-world-float 15s ease-in-out infinite; }
-      .review-world-glow { animation: review-glow 5s ease-in-out infinite; }
+      .review-world-photo { animation: review-world-float 16s ease-in-out infinite; }
+      .review-world-glow { animation: review-glow 5.5s ease-in-out infinite; }
       @media (prefers-reduced-motion: reduce) {
         .review-world-photo,.review-world-glow,.review-leaf,.review-animal,.review-rain { animation: none !important; }
       }
     `}</style>
 
-    <img
-      src={worldImage}
-      alt=""
-      aria-hidden="true"
-      className="review-world-photo absolute inset-[-3%] h-[106%] w-[106%] object-cover object-center select-none pointer-events-none"
-      style={{ filter: `saturate(${0.98 + Math.min(stageIndex, 10) * 0.012}) brightness(${0.98 + Math.min(stageIndex, 10) * 0.004})` }}
-    />
-    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,.08)_0%,rgba(255,255,255,.02)_42%,rgba(6,78,59,.18)_100%)] pointer-events-none" />
-    <div className="review-world-glow absolute left-[42%] top-[18%] h-40 w-40 rounded-full bg-amber-200/40 blur-3xl pointer-events-none" />
-
-    {windy && Array.from({ length: 9 }, (_, i) => (
-      <span
-        key={`leaf-${i}`}
+    <section className="relative h-[300px] sm:h-[420px] overflow-hidden rounded-[28px] border border-slate-200/70 bg-sky-100 shadow-[0_24px_70px_-38px_rgba(15,118,110,.58)]">
+      <img
+        src={worldImage}
+        alt=""
         aria-hidden="true"
-        className="review-leaf absolute text-lg sm:text-2xl drop-shadow-sm pointer-events-none"
-        style={{
-          left: `${-9 + i * 10}%`,
-          top: `${4 + (i % 4) * 11}%`,
-          animation: `review-leaf-drift ${7.6 + i * .7}s linear ${i * .85}s infinite`,
-        }}
-      >🍃</span>
-    ))}
+        className="review-world-photo absolute inset-[-2%] h-[104%] w-[104%] object-cover object-center select-none pointer-events-none"
+        style={{ filter: `saturate(${1 + Math.min(stageIndex, 10) * 0.01}) brightness(${0.99 + Math.min(stageIndex, 10) * 0.003})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/20 via-transparent to-white/5 pointer-events-none" />
+      <div className="review-world-glow absolute left-[40%] top-[18%] h-36 w-36 rounded-full bg-amber-200/30 blur-3xl pointer-events-none" />
 
-    {rainy && <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-900/[0.07]">
-      {Array.from({ length: 32 }, (_, i) => (
+      {windy && Array.from({ length: 7 }, (_, i) => (
         <span
-          key={`rain-${i}`}
-          className="review-rain absolute top-0 h-16 w-px bg-gradient-to-b from-transparent via-white/85 to-transparent rotate-[10deg]"
+          key={`leaf-${i}`}
+          aria-hidden="true"
+          className="review-leaf absolute text-base sm:text-xl drop-shadow-sm pointer-events-none"
           style={{
-            left: `${(i * 13) % 104}%`,
-            animation: `review-rain ${1 + (i % 5) * .15}s linear ${-(i % 7) * .18}s infinite`,
+            left: `${-10 + i * 13}%`,
+            top: `${7 + (i % 4) * 12}%`,
+            animation: `review-leaf-drift ${8 + i * .8}s linear ${i * .9}s infinite`,
           }}
-        />
+        >🍃</span>
       ))}
-    </div>}
 
-    <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-      {visibleAnimals.map((animal, i) => {
-        const flying = ['나비','꿀벌','새','앵무새','독수리'].includes(animal.name);
-        const positions = [
-          ['31%','31%'], ['78%','28%'], ['70%','48%'], ['28%','54%'], ['58%','19%'], ['48%','59%'],
-        ];
-        const [left, top] = positions[i % positions.length];
-        return <span
-          key={animal.name}
-          className="review-animal absolute text-2xl sm:text-3xl drop-shadow-[0_6px_8px_rgba(15,23,42,.28)]"
-          style={{
-            left, top,
-            animation: flying
-              ? `${i % 2 ? 'review-fly-b' : 'review-fly-a'} ${4.2 + i * .7}s ease-in-out ${-i * .6}s infinite`
-              : `review-ground-bob ${3.6 + i * .5}s ease-in-out ${-i * .4}s infinite`,
-          }}
-        >{animal.emoji}</span>;
-      })}
-    </div>
+      {rainy && <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-900/[0.04]">
+        {Array.from({ length: 26 }, (_, i) => (
+          <span
+            key={`rain-${i}`}
+            className="review-rain absolute top-0 h-14 w-px bg-gradient-to-b from-transparent via-white/80 to-transparent rotate-[10deg]"
+            style={{
+              left: `${(i * 15) % 104}%`,
+              animation: `review-rain ${1.1 + (i % 5) * .14}s linear ${-(i % 7) * .17}s infinite`,
+            }}
+          />
+        ))}
+      </div>}
 
-    <div className="relative z-10 flex min-h-[690px] sm:min-h-[760px] flex-col p-5 sm:p-8">
-      <div className="flex items-start justify-between gap-4 text-slate-900">
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        {visibleAnimals.map((animal, i) => {
+          const flying = ['나비','꿀벌','새','앵무새','독수리'].includes(animal.name);
+          const positions = [
+            ['25%','28%'], ['78%','25%'], ['70%','48%'], ['30%','58%'], ['57%','18%'], ['48%','62%'],
+          ];
+          const [left, top] = positions[i % positions.length];
+          return <span
+            key={animal.name}
+            className="review-animal absolute text-xl sm:text-3xl drop-shadow-[0_5px_7px_rgba(15,23,42,.28)]"
+            style={{
+              left, top,
+              animation: flying
+                ? `${i % 2 ? 'review-fly-b' : 'review-fly-a'} ${4.5 + i * .7}s ease-in-out ${-i * .6}s infinite`
+                : `review-ground-bob ${3.8 + i * .5}s ease-in-out ${-i * .4}s infinite`,
+            }}
+          >{animal.emoji}</span>;
+        })}
+      </div>
+
+      <div className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-2xl border border-white/75 bg-white/80 px-3 py-2 text-lg shadow-lg backdrop-blur-xl" aria-label={rainy ? '비 오는 성장 풍경' : windy ? '바람 부는 성장 풍경' : '맑은 성장 풍경'}>
+        {rainy ? '🌧️' : windy ? '🍃' : '☀️'}
+      </div>
+
+      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 flex items-center gap-2 rounded-2xl border border-white/75 bg-white/86 px-3 py-2 shadow-lg backdrop-blur-xl">
+        <span className="text-xl">🔥</span>
+        <span className="text-sm font-black text-slate-900">{streak}일 연속</span>
+      </div>
+    </section>
+
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
+      <div className="grid grid-cols-4 gap-1">
+        {macroStages.map((stage, index) => {
+          const achieved = streak >= stage.days;
+          const currentMacro = index === macroStages.length - 1
+            ? streak >= stage.days
+            : achieved && streak < macroStages[index + 1].days;
+          return <div key={stage.label} className="relative flex flex-col items-center text-center">
+            {index < macroStages.length - 1 && <div className="absolute left-[62%] top-6 h-px w-[76%] bg-slate-200" />}
+            <div className={`relative z-10 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border ${currentMacro ? 'border-emerald-300 bg-emerald-50 ring-4 ring-emerald-100' : achieved ? 'border-slate-200 bg-white' : 'border-slate-200 bg-slate-50 opacity-60'}`}>
+              <span className="text-2xl sm:text-3xl">{stage.emoji}</span>
+              {achieved && !currentMacro && <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] text-white ring-2 ring-white">✓</span>}
+            </div>
+            <span className={`mt-2 text-[11px] sm:text-xs font-bold ${currentMacro ? 'text-emerald-700' : 'text-slate-500'}`}>{stage.label}</span>
+          </div>;
+        })}
+      </div>
+    </section>
+
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm space-y-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight flex items-center gap-2 drop-shadow-[0_1px_2px_rgba(255,255,255,.7)]">
-            <Leaf className="w-8 h-8 text-emerald-700" />스마트 복습
-          </h1>
-          <p className="mt-2 text-sm sm:text-base font-semibold text-slate-700">{today}</p>
+          <p className="text-lg font-black text-emerald-800">나의 {stageName}</p>
+          <p className="mt-1 text-sm font-semibold text-slate-500">{nextName ? `${nextName}까지 ${remaining}일` : '생명의 지구 완성!'}</p>
         </div>
-        <div className="rounded-2xl border border-white/75 bg-white/75 px-3 py-2 text-xl shadow-lg backdrop-blur-xl">
-          {rainy ? '🌧️' : windy ? '🍃' : '☀️'}
-        </div>
-      </div>
-
-      <div className="mt-20 sm:mt-24">
-        <div className="inline-flex items-center gap-3 rounded-[24px] border border-white/80 bg-white/78 px-4 py-3 shadow-xl backdrop-blur-xl">
-          <span className="text-3xl">🔥</span>
-          <div>
-            <p className="text-2xl font-black text-slate-900 leading-none">{streak}일</p>
-            <p className="text-xs sm:text-sm font-semibold text-slate-500 mt-1">연속 복습</p>
-          </div>
-          <ChevronRight className="w-5 h-5 text-slate-500 ml-1" />
+        <div className="text-right text-xs sm:text-sm text-slate-500">
+          최고 <strong className="text-slate-800">{longest}일</strong><br />
+          누적 <strong className="text-slate-800">{total}일</strong>
         </div>
       </div>
 
-      <div className="mt-auto space-y-4">
-        <div className="rounded-[28px] border border-white/80 bg-white/70 px-3 py-4 shadow-xl backdrop-blur-2xl">
-          <div className="grid grid-cols-4 items-end gap-1">
-            {macroStages.map((stage, index) => {
-              const achieved = streak >= stage.days;
-              const currentMacro = index === macroStages.length - 1
-                ? streak >= stage.days
-                : achieved && streak < macroStages[index + 1].days;
-              return <div key={stage.label} className="relative flex flex-col items-center text-center">
-                {index < macroStages.length - 1 && <div className="absolute left-[62%] top-7 h-px w-[76%] bg-white/90" />}
-                <div className={`relative z-10 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full border shadow-lg ${currentMacro ? 'border-violet-300 bg-white ring-4 ring-violet-300/35' : achieved ? 'border-white/90 bg-white/90' : 'border-white/60 bg-white/55'}`}>
-                  <span className="text-3xl sm:text-4xl">{stage.emoji}</span>
-                  {achieved && !currentMacro && <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white ring-2 ring-white">✓</span>}
-                </div>
-                <span className={`mt-2 text-xs sm:text-sm font-bold ${currentMacro ? 'text-violet-700' : 'text-slate-600'}`}>{stage.label}</span>
-              </div>;
-            })}
-          </div>
+      <div>
+        <div className="mb-2 flex items-center justify-between text-xs font-bold">
+          <span className="text-emerald-700">다음 성장 단계</span>
+          <span className="text-slate-500">{progress}%</span>
         </div>
-
-        <div className="rounded-[26px] border border-white/85 bg-white/90 p-4 sm:p-5 shadow-xl backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-lg sm:text-xl font-black text-emerald-800">나의 {stageName}</p>
-              <p className="text-sm font-semibold text-slate-500 mt-1">{nextName ? `${nextName}까지 ${remaining}일!` : '생명의 지구 완성!'}</p>
-            </div>
-            <div className="text-right text-sm text-slate-500">
-              최고 <strong className="text-slate-800">{longest}일</strong><br />
-              누적 완료 <strong className="text-slate-800">{total}일</strong>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-3">
-            <span className="text-2xl">🌱</span>
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 transition-all" style={{ width: `${progress}%` }} />
-            </div>
-            <span className="text-sm font-bold text-slate-500">{progress}%</span>
-          </div>
-        </div>
-
-        <div className="rounded-[26px] border border-white/85 bg-white/90 p-4 sm:p-5 shadow-xl backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-2xl">🌍</div>
-              <div>
-                <p className="text-lg font-black text-slate-900">1년의 숲 만들기</p>
-                <p className="text-sm font-semibold text-slate-500">{streak < 365 ? `생명의 지구까지 ${365 - streak}일` : '1년 달성!'}</p>
-              </div>
-            </div>
-            <span className="text-sm sm:text-base font-bold text-slate-600">{Math.min(streak, 365)} / 365일</span>
-          </div>
-          <div className="mt-4 flex items-center gap-3">
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-blue-500 transition-all" style={{ width: `${yearlyProgress}%` }} />
-            </div>
-            <span className="text-sm font-bold text-slate-500">{yearlyProgress}%</span>
-          </div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400 transition-all" style={{ width: `${progress}%` }} />
         </div>
       </div>
-    </div>
-  </section>;
+
+      <div>
+        <div className="mb-2 flex items-center justify-between text-xs font-bold">
+          <span className="text-slate-600">🌍 지구까지</span>
+          <span className="text-slate-500">{Math.min(streak, 365)} / 365일</span>
+        </div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-blue-500 transition-all" style={{ width: `${yearlyProgress}%` }} />
+        </div>
+      </div>
+    </section>
+
+    <span className="sr-only">{today} 기준 성장 현황</span>
+  </div>;
 }
 
 function QuestionCard({ uid, session, question, onSaved }: { uid: string; session: ReviewSession; question: ReviewQuestion; onSaved: (s: ReviewSession) => void }) {
@@ -342,6 +323,13 @@ export function SmartReviewTab({ uid, today, sessions, ready, error, retry, comp
   const history = dailySession(allSessions, historyDate);
   const extraHistory = allSessions.filter(s => sessionDay(s) === historyDate && isExtra(s));
   return <div className="space-y-5">
+    <div className="flex items-end justify-between gap-3 px-1">
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900"><Leaf className="h-6 w-6 text-emerald-600" />스마트 복습</h1>
+        <p className="mt-1 text-sm text-slate-500">오늘의 복습으로 세계를 키워요.</p>
+      </div>
+      <span className="text-xs font-semibold text-slate-400">${today}</span>
+    </div>
     <GrowthScene
       streak={stats.streak}
       stageName={stats.stage.name}
