@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { CloudRain, Pause, Play, Sun, Wind } from 'lucide-react';
-import { forestLife, worldStageForStreak } from '../lib/smartReview';
+import { forestLife } from '../lib/smartReview';
+import { landscapeForStreak } from '../lib/growthLandscape';
 import './GrowthScene.css';
 
 type Weather = 'sun' | 'wind' | 'rain';
@@ -61,15 +62,15 @@ export function GrowthScene({ streak, stageName }: { streak: number; stageName: 
     const timer = window.setInterval(() => setWeather(w => w === 'sun' ? 'wind' : w === 'wind' ? 'rain' : 'sun'), 18000);
     return () => clearInterval(timer);
   }, [automatic, still]);
-  const world = worldStageForStreak(streak);
-  const landscape = world.key === 'sprout' ? '/Daily-English-Studio/garden-meadow-v1.webp' : `/Daily-English-Studio/assets/review-world-${world.key}.svg`;
+  const scenery = landscapeForStreak(streak);
+  const landscape = '/Daily-English-Studio/' + scenery.asset;
   return <div className="garden-wrapper" ref={root}>
-    <div className={`living-garden garden-weather--${weather} ${still ? 'garden-still' : ''}`} data-testid="living-garden" data-weather={weather} data-paused={still}>
+    <div className={`living-garden garden-weather--${weather} ${still ? 'garden-still' : ''}`} data-testid="living-garden" data-landscape={scenery.key} data-weather={weather} data-paused={still}>
       <div className="garden-landscape" style={{ backgroundImage: `url("${landscape}")` }} aria-hidden="true" />
       <div className="garden-light" aria-hidden="true" />
       <div className="garden-cloud garden-cloud--one" aria-hidden="true" /><div className="garden-cloud garden-cloud--two" aria-hidden="true" />
-      <div className="garden-scene-description" role="img" aria-label={`${stageName} 성장 풍경. ${animals.length ? animals.map(a => a.name).join(', ') + '와 함께 살고 있어요.' : '첫 동물 친구를 기다리는 새싹입니다.'}`}>
-        {world.key === 'sprout' && <div className="garden-trees" aria-hidden="true"><div className="garden-tree" style={{ '--tree-position': '50%', '--tree-scale': 1 } as React.CSSProperties}><Plant kind="sprout" seed={`${seed}-sprout`} /></div></div>}
+      <div className="garden-scene-description" role="img" aria-label={`${stageName} 성장 풍경 · ${scenery.name}. ${animals.length ? animals.map(a => a.name).join(', ') + '와 함께 살고 있어요.' : '첫 동물 친구를 기다리는 새싹입니다.'}`}>
+        {scenery.key === 'meadow' && <div className="garden-trees" aria-hidden="true"><div className="garden-tree" style={{ '--tree-position': '50%', '--tree-scale': 1 } as React.CSSProperties}><Plant kind="sprout" seed={`${seed}-sprout`} /></div></div>}
         {streak >= 3 && <><Butterfly variant={1} />{streak >= 21 && <Butterfly variant={2} />}</>}
         <div className="garden-animals" aria-hidden="true">{animals.filter(a => a.name !== '나비').slice(-6).map((a, i) => <span key={a.name} title={`${a.days}일 · ${a.name}`} className={`garden-animal ${['꿀벌', '새', '부엉이', '앵무새', '독수리'].includes(a.name) ? 'garden-animal--flying' : ''}`} style={{ '--animal-index': i } as React.CSSProperties}>{a.emoji}</span>)}</div>
       </div>
@@ -78,7 +79,7 @@ export function GrowthScene({ streak, stageName }: { streak: number; stageName: 
         {Array.from({ length: 6 }, (_, i) => <i className="garden-pollen" key={`pollen-${i}`} style={{ '--particle': i } as React.CSSProperties} />)}
         {[0, 1, 2].map(i => <i className="garden-wind" key={i} style={{ '--particle': i } as React.CSSProperties} />)}
       </div>
-      <div className="garden-topline"><div><span className="garden-eyebrow">MY LITTLE FOREST</span><h2>하루 한 번, 자라는 나의 숲</h2></div><button type="button" className="garden-pause" onClick={() => setPaused(p => !p)} disabled={reduced} aria-label={reduced ? '동작 줄이기 설정 적용됨' : paused ? '정원 움직임 재생' : '정원 움직임 멈추기'}>{paused || reduced ? <Play size={14} /> : <Pause size={14} />}</button></div>
+      <div className="garden-topline"><div><span className="garden-eyebrow">MY LITTLE FOREST</span><h2>{scenery.name}</h2></div><button type="button" className="garden-pause" onClick={() => setPaused(p => !p)} disabled={reduced} aria-label={reduced ? '동작 줄이기 설정 적용됨' : paused ? '정원 움직임 재생' : '정원 움직임 멈추기'}>{paused || reduced ? <Play size={14} /> : <Pause size={14} />}</button></div>
       <div className="garden-bottomline"><p>{nextAnimal ? streak < 3 ? '작은 시작에, 곧 나비가 찾아와요.' : '매일의 한 문장이 숲에 생명을 더해요.' : '365일의 꾸준함이 만든 생명의 지구.'}</p><span className="garden-weather-label">{weatherNames[weather]}</span></div>
     </div>
     <div className="garden-toolbar"><span className="garden-companions">함께 사는 동물 친구 <strong>{animals.length}마리</strong></span><div className="garden-weather-controls" role="group" aria-label="작은 정원의 날씨">
