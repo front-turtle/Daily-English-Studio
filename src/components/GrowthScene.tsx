@@ -72,7 +72,6 @@ export function GrowthScene({ streak, stageName }: { streak: number; stageName: 
         {world.key === 'sprout' && <div className="garden-trees" aria-hidden="true"><div className="garden-tree" style={{ '--tree-position': '50%', '--tree-scale': 1 } as React.CSSProperties}><Plant kind="sprout" seed={`${seed}-sprout`} /></div></div>}
         {streak >= 3 && <><Butterfly variant={1} />{streak >= 21 && <Butterfly variant={2} />}</>}
         <div className="garden-animals" aria-hidden="true">{animals.filter(a => a.name !== '나비').slice(-6).map((a, i) => <span key={a.name} title={`${a.days}일 · ${a.name}`} className={`garden-animal ${['꿀벌', '새', '부엉이', '앵무새', '독수리'].includes(a.name) ? 'garden-animal--flying' : ''}`} style={{ '--animal-index': i } as React.CSSProperties}>{a.emoji}</span>)}</div>
-        {false && streak >= 240 && <span className="garden-planet" aria-hidden="true">{streak >= 365 ? '🌍' : '🌏'}</span>}
       </div>
       <div className="garden-weather-effects" aria-hidden="true">
         {Array.from({ length: 16 }, (_, i) => <i className="garden-raindrop" key={`rain-${i}`} style={{ '--particle': i } as React.CSSProperties} />)}
