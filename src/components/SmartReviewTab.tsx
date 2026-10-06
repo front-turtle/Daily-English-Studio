@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ChevronRight, Download, Leaf, Loader2 } from 'lucide-react';
 import type { DailyComposition, KeyExpression } from '../types';
-import { createReviewSession, dailySession, forestLife, GROWTH_STAGES, isComplete, isExtra, reviewStats, sessionDay, shiftReviewDate } from '../lib/smartReview';
+import { createReviewSession, dailySession, GROWTH_STAGES, isComplete, isExtra, reviewStats, sessionDay, shiftReviewDate } from '../lib/smartReview';
 import type { ReviewAnswer, ReviewQuestion, ReviewSession } from '../lib/smartReview';
 import { reviewCandidates } from '../lib/reviewCandidates';
 import { saveReviewAnswer, startReview } from '../lib/smartReviewService';
 import { gradeSmartReview } from '../lib/gradeSmartReview';
+import { GrowthScene } from './GrowthScene';
 
 interface Props {
   uid?: string;
@@ -21,26 +22,6 @@ interface Props {
 }
 const sourceLabel = { writing: '내 영작', polished: 'AI 첨삭 · 핵심 수정', expression: '주요 표현' };
 const button = 'rounded-xl px-4 py-3 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed';
-
-function GrowthScene({ streak, stageName }: { streak: number; stageName: string }) {
-  const { animals, nextAnimal } = forestLife(streak);
-  const trees = streak < 21 ? 1 : Math.min(11, 3 + Math.floor(streak / 30));
-  return <div className="space-y-2">
-    <div className="relative h-56 sm:h-64 overflow-hidden rounded-2xl bg-gradient-to-b from-sky-100 via-emerald-50 to-emerald-200" role="img" aria-label={`${stageName} 성장 풍경. ${animals.length ? animals.map(a => a.name).join(', ') + '와 함께 살고 있어요.' : '첫 동물 친구를 기다리는 새싹입니다.'}`}>
-      <div className="absolute right-6 top-4 text-4xl" aria-hidden="true">{streak >= 240 ? streak >= 365 ? '🌍' : '🌏' : '☀️'}</div>
-      <div className="absolute bottom-0 inset-x-0 h-24 bg-emerald-300/40 rounded-t-[50%]" />
-      <div className="absolute bottom-4 right-0 h-5 w-2/5 rounded-full bg-sky-300/60 rotate-[-8deg]" />
-      <div className="absolute inset-x-4 top-9 flex items-end justify-center -space-x-3 select-none" aria-hidden="true">
-        {Array.from({ length: trees }, (_, i) => <span key={i} className={i % 2 ? 'text-6xl sm:text-7xl pt-4' : 'text-7xl sm:text-8xl'}>{streak < 7 ? '🌱' : streak < 14 ? '🌿' : streak >= 120 && i % 2 === 0 ? '🌴' : i % 3 ? '🌲' : '🌳'}</span>)}
-      </div>
-      <div className="absolute bottom-2 inset-x-3 grid grid-cols-5 gap-x-2 gap-y-1 items-center justify-items-center" aria-hidden="true">
-        {animals.map(a => <span key={a.name} title={`${a.days}일 · ${a.name}`} className="text-2xl sm:text-3xl drop-shadow-sm">{a.emoji}</span>)}
-      </div>
-      {!animals.length && <p className="absolute inset-x-0 bottom-5 text-center text-xs text-emerald-800">3일 연속 복습하면 첫 나비가 찾아와요</p>}
-    </div>
-    <div className="flex flex-wrap justify-between gap-1 text-xs text-emerald-800"><span>함께 사는 동물 친구 {animals.length}마리</span><span>{nextAnimal ? `${nextAnimal.emoji} ${nextAnimal.name}까지 ${nextAnimal.days - streak}일` : '🐋 1년 동안 생명 가득한 지구를 만들었어요!'}</span></div>
-  </div>;
-}
 
 function QuestionCard({ uid, session, question, onSaved }: { uid: string; session: ReviewSession; question: ReviewQuestion; onSaved: (s: ReviewSession) => void }) {
   const [text, setText] = useState('');
