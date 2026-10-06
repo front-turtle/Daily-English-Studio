@@ -59,6 +59,63 @@ export const GROWTH_STAGES = [
   { days: 365, name: '생명의 지구', emoji: '🌍' },
 ] as const;
 
+export const WORLD_STAGES = [
+  {
+    key: 'sprout',
+    startDay: 0,
+    endDay: 30,
+    name: '새싹',
+    emoji: '🌱',
+    subtitle: '작은 생명이 뿌리내리는 시간',
+    environment: 'sunny',
+  },
+  {
+    key: 'tree',
+    startDay: 31,
+    endDay: 120,
+    name: '나무',
+    emoji: '🌳',
+    subtitle: '가지가 자라고 생명이 찾아오는 시간',
+    environment: 'breeze',
+  },
+  {
+    key: 'forest',
+    startDay: 121,
+    endDay: 240,
+    name: '숲',
+    emoji: '🌲',
+    subtitle: '비와 바람을 품는 깊은 숲',
+    environment: 'forest',
+  },
+  {
+    key: 'earth',
+    startDay: 241,
+    endDay: 365,
+    name: '지구',
+    emoji: '🌍',
+    subtitle: '365일의 생태계를 완성하는 시간',
+    environment: 'world',
+  },
+] as const;
+
+export type WorldStage = typeof WORLD_STAGES[number];
+
+export function worldStageForStreak(streak: number): WorldStage {
+  const day = Math.max(0, Math.min(streak, 365));
+  return WORLD_STAGES.find(stage => day >= stage.startDay && day <= stage.endDay) || WORLD_STAGES[WORLD_STAGES.length - 1];
+}
+
+export function worldStageProgress(streak: number, stage = worldStageForStreak(streak)): number {
+  if (stage.key === 'earth' && streak >= 365) return 100;
+  const day = Math.max(stage.startDay, Math.min(streak, stage.endDay));
+  const span = Math.max(1, stage.endDay - stage.startDay + 1);
+  return Math.max(0, Math.min(100, Math.round(((day - stage.startDay + 1) / span) * 100)));
+}
+
+export function worldProgress(streak: number): number {
+  return Math.max(0, Math.min(100, Math.round((Math.min(streak, 365) / 365) * 100)));
+}
+
 export const FOREST_ANIMALS = [
   { days: 3, name: '나비', emoji: '🦋' },
   { days: 7, name: '꿀벌', emoji: '🐝' },
