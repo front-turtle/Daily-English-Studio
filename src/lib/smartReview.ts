@@ -108,8 +108,10 @@ export function worldStageForStreak(streak: number): WorldStage {
 export function worldStageProgress(streak: number, stage = worldStageForStreak(streak)): number {
   if (stage.key === 'earth' && streak >= 365) return 100;
   const day = Math.max(stage.startDay, Math.min(streak, stage.endDay));
-  const span = Math.max(1, stage.endDay - stage.startDay + 1);
-  return Math.max(0, Math.min(100, Math.round(((day - stage.startDay + 1) / span) * 100)));
+  const offset = stage.startDay === 0 ? 0 : 1;
+  const completedInStage = Math.max(0, day - stage.startDay + offset);
+  const span = Math.max(1, stage.endDay - stage.startDay + offset);
+  return Math.max(0, Math.min(100, Math.round((completedInStage / span) * 100)));
 }
 
 export function worldProgress(streak: number): number {
