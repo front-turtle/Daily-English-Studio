@@ -354,7 +354,7 @@ export function SmartReviewTab({ uid, today, sessions, ready, error, retry, comp
       today={today}
     />
     <details className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <summary className="cursor-pointer text-sm font-semibold">새싹부터 지구까지 · 16단계 상세 보기</summary>
+      <summary className="cursor-pointer text-sm font-semibold">새싹부터 지구까지 · 16단계 여정 보기</summary>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
         {GROWTH_STAGES.map((stage, i) => <div key={stage.days} className={`text-center text-xs rounded-xl p-2 ${i === stats.stageIndex ? 'bg-emerald-100 ring-1 ring-emerald-300' : 'bg-slate-50 text-slate-500'}`}><div className="text-xl mb-1">{stage.emoji}</div><strong className="block">{stage.name}</strong><span>{stage.days === 0 ? '시작' : `${stage.days}일`}{i === stats.stageIndex ? ' · 현재' : stats.streak >= stage.days ? ' · 달성' : ''}</span></div>)}
       </div>
