@@ -46,10 +46,13 @@ function GrowthScene({
   today: string;
 }) {
   const { animals } = forestLife(streak);
-  const weatherKey = streak % 11;
-  const rainy = streak > 0 && (weatherKey === 4 || weatherKey === 9);
-  const windy = weatherKey === 2 || weatherKey === 5 || weatherKey === 7 || rainy;
-  const visibleAnimals = animals.slice(-6);
+  const weatherSeed = [...today].reduce((sum, char) => sum + char.charCodeAt(0), 0) + streak * 17;
+  const weatherKey = weatherSeed % 13;
+  const rainy = weatherKey === 3 || weatherKey === 9;
+  const windy = rainy || [1, 5, 8, 11].includes(weatherKey);
+  const strongWind = weatherKey === 5 || weatherKey === 11;
+  const visibleAnimals = animals.filter(animal => animal.name !== '나비').slice(-5);
+  const butterflyCount = streak >= 30 ? 3 : streak >= 7 ? 2 : streak >= 3 ? 1 : 0;
   const worldImage = new URL('assets/smart-review-world.svg', document.baseURI).toString();
   const yearlyProgress = Math.floor((Math.min(streak, 365) / 365) * 100);
   const macroStages = [
@@ -69,6 +72,50 @@ function GrowthScene({
         0% { transform: translate3d(-42px,-18px,0) rotate(0deg); opacity: 0; }
         14% { opacity: .8; }
         100% { transform: translate3d(470px,245px,0) rotate(470deg); opacity: 0; }
+      }
+      @keyframes review-branch-sway {
+        0%,100% { transform: rotate(-1.2deg) translateX(0); }
+        45% { transform: rotate(1.6deg) translateX(2px); }
+        70% { transform: rotate(.4deg) translateX(0); }
+      }
+      @keyframes review-branch-sway-strong {
+        0%,100% { transform: rotate(-2.5deg) translateX(-1px); }
+        40% { transform: rotate(3.5deg) translateX(5px); }
+        68% { transform: rotate(-.6deg) translateX(1px); }
+      }
+      @keyframes review-sprout-sway {
+        0%,100% { transform: rotate(-2deg); }
+        50% { transform: rotate(2.8deg); }
+      }
+      @keyframes review-sprout-sway-strong {
+        0%,100% { transform: rotate(-4deg); }
+        45% { transform: rotate(5.5deg); }
+        75% { transform: rotate(1deg); }
+      }
+      @keyframes review-butterfly-path-a {
+        0%,100% { transform: translate3d(0,0,0) rotate(-5deg); }
+        18% { transform: translate3d(34px,-20px,0) rotate(7deg); }
+        42% { transform: translate3d(58px,8px,0) rotate(-2deg); }
+        68% { transform: translate3d(18px,28px,0) rotate(-8deg); }
+        84% { transform: translate3d(-16px,8px,0) rotate(4deg); }
+      }
+      @keyframes review-butterfly-path-b {
+        0%,100% { transform: translate3d(0,0,0) rotate(4deg); }
+        22% { transform: translate3d(-32px,18px,0) rotate(-7deg); }
+        48% { transform: translate3d(-10px,-24px,0) rotate(5deg); }
+        72% { transform: translate3d(30px,-8px,0) rotate(9deg); }
+      }
+      @keyframes review-wing-left {
+        0%,100% { transform: rotateY(18deg) rotateZ(-18deg) scaleX(1); }
+        50% { transform: rotateY(78deg) rotateZ(-6deg) scaleX(.55); }
+      }
+      @keyframes review-wing-right {
+        0%,100% { transform: rotateY(-18deg) rotateZ(18deg) scaleX(1); }
+        50% { transform: rotateY(-78deg) rotateZ(6deg) scaleX(.55); }
+      }
+      @keyframes review-rain-mist {
+        0%,100% { opacity: .08; transform: translateX(-2%); }
+        50% { opacity: .18; transform: translateX(2%); }
       }
       @keyframes review-fly-a {
         0%,100% { transform: translate3d(0,0,0) rotate(-5deg); }
@@ -96,8 +143,14 @@ function GrowthScene({
       }
       .review-world-photo { animation: review-world-float 16s ease-in-out infinite; }
       .review-world-glow { animation: review-glow 5.5s ease-in-out infinite; }
+      .review-branch { transform-origin: 10% 12%; animation: ${strongWind ? 'review-branch-sway-strong 3.4s' : 'review-branch-sway 6.8s'} ease-in-out infinite; }
+      .review-branch-right { transform-origin: 92% 12%; animation-delay: -1.7s; }
+      .review-sprout-live { transform-origin: 50% 100%; animation: ${strongWind ? 'review-sprout-sway-strong 2.8s' : 'review-sprout-sway 5.2s'} ease-in-out infinite; }
+      .review-butterfly-wing-left { transform-origin: 100% 50%; animation: review-wing-left .22s ease-in-out infinite; }
+      .review-butterfly-wing-right { transform-origin: 0% 50%; animation: review-wing-right .22s ease-in-out infinite; }
+      .review-rain-mist { animation: review-rain-mist 6s ease-in-out infinite; }
       @media (prefers-reduced-motion: reduce) {
-        .review-world-photo,.review-world-glow,.review-leaf,.review-animal,.review-rain { animation: none !important; }
+        .review-world-photo,.review-world-glow,.review-leaf,.review-animal,.review-rain,.review-branch,.review-sprout-live,.review-butterfly,.review-butterfly-wing-left,.review-butterfly-wing-right,.review-rain-mist { animation: none !important; }
       }
     `}</style>
 
