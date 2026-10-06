@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { build } from 'esbuild';
 import { readdirSync } from 'node:fs';
+import { LANDSCAPE_STAGES, landscapeForStreak } from '../../src/lib/growthLandscape';
 
 async function openGarden(page, reduced = false) {
   const bundle = await build({ stdin: { contents: `import React from 'react';import{createRoot}from'react-dom/client';import{GrowthScene}from'./src/components/GrowthScene';const root=createRoot(document.getElementById('root'));window.showGarden=(streak,stageName)=>root.render(<GrowthScene streak={streak} stageName={stageName}/>);`, loader: 'tsx', resolveDir: process.cwd() }, bundle: true, write: false, outfile: 'garden-fixture.js', external: ['/Daily-English-Studio/*'], define: { 'process.env.NODE_ENV': '"production"' } });
@@ -35,8 +36,12 @@ for (const width of [1280, 375, 320]) {
     expect(await page.locator('.garden-sway').first().evaluate(el => getComputedStyle(el).animationPlayState)).toBe('paused');
     await page.getByRole('button', { name: '정원 움직임 재생' }).click();
     await expect(garden).toHaveAttribute('data-paused', 'false');
-    for (const days of [0, 7, 14, 21, 30, 45, 60, 90, 120, 150, 180, 210, 240, 300, 365]) {
+    for (const days of [0, 6, 7, 14, 21, 29, 30, 45, 60, 89, 90, 119, 120, 149, 150, 180, 209, 210, 239, 240, 300, 365, 0]) {
       await page.evaluate(days => window.showGarden(days, '성장 단계'), days);
+      const scenery = landscapeForStreak(days);
+      await expect(garden).toHaveAttribute('data-landscape', scenery.key);
+      expect(await page.locator('.garden-landscape').evaluate(el => getComputedStyle(el).backgroundImage)).toContain(scenery.asset);
+      await expect(page.getByRole('heading', { name: scenery.name, exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await expect(page.getByTestId('living-garden')).toBeVisible();
     }
@@ -67,4 +72,18 @@ test('automatic garden weather cycles without changing review data', async ({ pa
   await expect(page.getByTestId('living-garden')).toHaveAttribute('data-weather', 'rain');
   await page.clock.runFor(18000);
   await expect(page.getByTestId('living-garden')).toHaveAttribute('data-weather', 'sun');
+});
+
+test('every scenery asset decodes and is available in the PWA cache manifest', async ({ page }) => {
+  await openGarden(page);
+  const serviceWorker = await page.request.get('/Daily-English-Studio/sw.js');
+  const worker = await serviceWorker.text();
+  for (const scenery of LANDSCAPE_STAGES) {
+    const url = '/Daily-English-Studio/' + scenery.asset;
+    const asset = await page.request.get(url);
+    expect(asset.ok(), scenery.key).toBe(true);
+    expect((await asset.body()).length, scenery.key).toBeLessThan(500000);
+    expect(worker, scenery.key).toContain(scenery.asset);
+    await page.evaluate(async url => { const img = new Image(); img.src = url; await img.decode(); }, url);
+  }
 });
