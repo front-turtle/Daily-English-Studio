@@ -83,7 +83,8 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
           c.korean.toLowerCase().includes(q) ||
           c.english.toLowerCase().includes(q) ||
           (c.polished && c.polished.toLowerCase().includes(q)) ||
-          (c.polishedTip && c.polishedTip.toLowerCase().includes(q))
+          (c.polishedTip && c.polishedTip.toLowerCase().includes(q)) ||
+          (c.writingMemo && c.writingMemo.toLowerCase().includes(q))
       );
     }
 
@@ -425,6 +426,8 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
                       {comp.korean}
                     </p>
                   </div>
+
+                  {comp.writingMemo && <details className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-xs sm:text-sm"><summary className="cursor-pointer font-semibold text-amber-900">작성 메모</summary><p className="mt-2 whitespace-pre-wrap break-words text-slate-600">{comp.writingMemo}</p></details>}
 
                   {/* 1차 영어 작문 */}
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5">
@@ -808,3 +811,4 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
     </div>
   );
 };
+

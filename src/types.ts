@@ -3,6 +3,7 @@ export interface DailyComposition {
   date: string; // YYYY-MM-DD
   korean: string; // 한글 작문
   english: string; // 1차 영어 작문
+  writingMemo?: string; // 영작 과정 / 문장 구성 메모
   polished?: string; // 나중에 다듬은 표현 / 개선문
   polishedTip?: string; // 개선 팁
   favorite?: boolean;
@@ -53,3 +54,4 @@ export interface BackupData {
   audioItems: AudioItem[];
   expressions: KeyExpression[];
 }
+
