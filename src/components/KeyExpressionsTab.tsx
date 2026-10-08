@@ -158,7 +158,7 @@ export const KeyExpressionsTab: React.FC<KeyExpressionsTabProps> = ({
         <form onSubmit={handleAddSubmit} className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">영어 주요 표현/문장 *</label>
+              <div className="flex min-h-8 items-center"><label className="text-xs font-bold text-slate-700">영어 주요 표현/문장 *</label></div>
               <input
                 type="text"
                 value={expressionInput}
@@ -169,8 +169,7 @@ export const KeyExpressionsTab: React.FC<KeyExpressionsTabProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">한글 뜻 *</label>
-              <ExpressionAIReview english={expressionInput} korean={meaningInput} onApply={(english, korean) => { setExpressionInput(english); setMeaningInput(korean); }} />
+              <ExpressionAIReview label="한글 뜻 *" english={expressionInput} korean={meaningInput} onApply={(english, korean) => { setExpressionInput(english); setMeaningInput(korean); }} />
               <input
                 type="text"
                 value={meaningInput}

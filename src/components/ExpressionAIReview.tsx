@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { reviewExpression } from '../lib/reviewExpression';
 import type { ExpressionReview } from '../lib/expressionReviewData';
-export function ExpressionAIReview({ english, korean, onApply, reviewer = reviewExpression }: {
-  english: string; korean: string; onApply: (english: string, korean: string) => void; reviewer?: typeof reviewExpression;
+export function ExpressionAIReview({ english, korean, onApply, label, reviewer = reviewExpression }: {
+  english: string; korean: string; onApply: (english: string, korean: string) => void; label?: string; reviewer?: typeof reviewExpression;
 }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ExpressionReview | null>(null);
@@ -27,7 +27,7 @@ export function ExpressionAIReview({ english, korean, onApply, reviewer = review
     }
   };
   return <div className="space-y-2">
-    <div className="flex justify-end"><button type="button" onClick={check} disabled={busy || (!english.trim() && !korean.trim())} className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 disabled:opacity-40"><Sparkles className="h-3.5 w-3.5" />{busy ? '검토 중…' : 'AI 검토'}</button></div>
+    <div className="flex min-h-8 items-center justify-between gap-2">{label ? <span className="text-xs font-bold text-slate-700">{label}</span> : <span />}<button type="button" onClick={check} disabled={busy || (!english.trim() && !korean.trim())} className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 disabled:opacity-40"><Sparkles className="h-3.5 w-3.5" />{busy ? '검토 중…' : 'AI 검토'}</button></div>
     <div aria-live="polite">
       {busy && <p role="status" className="text-xs text-indigo-600">영작·번역과 표현을 확인하고 있어요…</p>}
       {error && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">{error} 입력 내용은 그대로 유지됩니다.</p>}
