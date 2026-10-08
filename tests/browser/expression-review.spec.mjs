@@ -39,3 +39,32 @@ for (const width of [1280, 375, 320]) {
     expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
+
+test('new and existing expressions save only after applying and submitting suggestions', async ({ page }) => {
+  const bundle = await build({ stdin: { contents: `
+    import React from 'react'; import {createRoot} from 'react-dom/client';
+    import {KeyExpressionsTab} from './src/components/KeyExpressionsTab';
+    createRoot(document.getElementById('root')).render(<KeyExpressionsTab currentDate="2026-10-09"
+      expressions={[{id:'saved',date:'2026-10-09',expression:'I spent half a day reviewing this issue.',meaning:'해결하기 위해 반나절을 사용했다.',createdAt:0,favorite:false}]}
+      onAddExpression={x=>window.added=x} onUpdateExpression={(id,x)=>window.updated={id,...x}} onDeleteExpression={()=>{}}/>);
+  `, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, format: 'iife', plugins: [{ name: 'mock-review', setup(b) {
+    b.onLoad({filter:/[\\/]reviewExpression\.ts$/}, () => ({loader:'js',contents:`export async function reviewExpression(e,k) { return {english:e || 'I reviewed this issue.',korean:'이 이슈를 검토했다.',feedback:'검토한다는 의미로 수정했어요.'}; }`}));
+  } }] });
+  const css=readdirSync('dist/assets').find(n=>n.endsWith('.css'));
+  await page.route('**/expression-form-fixture',r=>r.fulfill({contentType:'text/html',body:`<link rel="stylesheet" href="/Daily-English-Studio/assets/${css}"><div id="root"></div><script>${bundle.outputFiles[0].text}</script>`}));
+  await page.setViewportSize({width:375,height:900}); await page.goto('/expression-form-fixture');
+  await page.getByPlaceholder('예: ~에 감을 잡다, 익숙해지다').fill('이 이슈를 검토했다.');
+  await page.getByRole('button',{name:'AI 검토',exact:true}).click();
+  await expect(page.getByRole('button',{name:'제안 적용'})).toBeVisible();
+  expect(await page.evaluate(()=>window.added)).toBeUndefined();
+  await page.getByRole('button',{name:'제안 적용'}).click();
+  await page.getByRole('button',{name:'표현 등록하기'}).click();
+  expect(await page.evaluate(()=>window.added.expression)).toBe('I reviewed this issue.');
+  await page.getByRole('button',{name:'수정',exact:true}).click();
+  await page.getByRole('button',{name:'AI 검토',exact:true}).last().click();
+  await page.getByRole('button',{name:'제안 적용'}).click();
+  expect(await page.evaluate(()=>window.updated)).toBeUndefined();
+  await page.getByRole('button',{name:'저장',exact:true}).click();
+  expect(await page.evaluate(()=>window.updated)).toMatchObject({id:'saved',meaning:'이 이슈를 검토했다.'});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
