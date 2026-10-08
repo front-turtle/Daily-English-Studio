@@ -155,6 +155,7 @@ export const saveCompositionToFirestore = async (userId: string, comp: DailyComp
     date: comp.date,
     korean: comp.korean,
     english: comp.english,
+    writingMemo: comp.writingMemo || '',
     polished: comp.polished || '',
     polishedTip: comp.polishedTip || '',
     favorite: comp.favorite ?? false,

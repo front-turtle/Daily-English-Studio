@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DailyComposition } from '../types';
 import { playEnglishSpeech } from '../utils/speech';
+import { WritingMemo } from './WritingMemo';
 import { SpeechPlayButton } from './SpeechPlayButton';
 import { getTodayDateString } from '../data/initialData';
 import { useAuth } from '../context/AuthContext';
@@ -54,7 +55,8 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
   const draftStorageKey = `daily_writing_draft_${selectedDate}`;
   const [koreanInput, setKoreanInput] = useState('');
   const [englishInput, setEnglishInput] = useState('');
-  const [hasLoadedDraft, setHasLoadedDraft] = useState(false);
+  const [writingMemoInput, setWritingMemoInput] = useState('');
+  const [loadedDraftKey, setLoadedDraftKey] = useState('');
 
   // Restore draft when date changes or component loads
   useEffect(() => {
@@ -64,21 +66,24 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
         const parsed = JSON.parse(savedDraft);
         setKoreanInput(parsed.korean || '');
         setEnglishInput(parsed.english || '');
+        setWritingMemoInput(parsed.writingMemo || '');
       } else {
         setKoreanInput('');
         setEnglishInput('');
+        setWritingMemoInput('');
       }
     } catch {
       setKoreanInput('');
       setEnglishInput('');
+      setWritingMemoInput('');
     }
-    setHasLoadedDraft(true);
+    setLoadedDraftKey(draftStorageKey);
   }, [draftStorageKey]);
 
   // Real-time autosave to localStorage (sync status updated on top-right header)
   useEffect(() => {
-    if (!hasLoadedDraft) return;
-    const hasText = koreanInput.trim().length > 0 || englishInput.trim().length > 0;
+    if (loadedDraftKey !== draftStorageKey) return;
+    const hasText = koreanInput.trim().length > 0 || englishInput.trim().length > 0 || writingMemoInput.trim().length > 0;
     if (!hasText) {
       localStorage.removeItem(draftStorageKey);
       markSynced();
@@ -94,6 +99,7 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
           JSON.stringify({
             korean: koreanInput,
             english: englishInput,
+            writingMemo: writingMemoInput,
             savedAt: Date.now(),
           })
         );
@@ -105,7 +111,7 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [koreanInput, englishInput, draftStorageKey, hasLoadedDraft]);
+  }, [koreanInput, englishInput, writingMemoInput, draftStorageKey, loadedDraftKey]);
 
   // Inline delete confirmation state (safe in iframes)
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -135,6 +141,7 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
       date: selectedDate,
       korean: koreanInput.trim(),
       english: englishInput.trim(),
+      writingMemo: writingMemoInput.trim(),
       favorite: false,
     });
 
@@ -142,6 +149,7 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
     localStorage.removeItem(draftStorageKey);
     setKoreanInput('');
     setEnglishInput('');
+    setWritingMemoInput('');
     markSynced();
     showToast('영작이 저장되어 아래 목록에 추가되었습니다. 계속해서 다음 문장을 영작하세요!');
   };
@@ -298,6 +306,11 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <label htmlFor="writing-memo" className="text-xs font-bold text-slate-700">작성 메모 <span className="font-normal text-slate-400">(선택 · 영작 과정)</span></label>
+            <textarea id="writing-memo" value={writingMemoInput} onChange={e => setWritingMemoInput(e.target.value)} rows={3} placeholder={'예: 핵심 내용: 불량 발생\n문장 구성: 발생한 일 → 원인 → 내 기분\n고민한 표현: reviewing / resolving'} className="w-full resize-y rounded-xl border border-amber-200 bg-amber-50/40 p-3 text-xs sm:text-sm leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+          </div>
+
           {/* 영어 작문 */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -431,6 +444,8 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
                       {comp.korean}
                     </p>
                   </div>
+
+                  <WritingMemo value={comp.writingMemo} onSave={writingMemo => onUpdateComposition(comp.id, { writingMemo })} />
 
                   {/* 2. 1차 영어 작문 (줄바꿈 처리로 카드 너비 100% 활용) */}
                   <div className="bg-indigo-50/30 rounded-xl p-3 border border-indigo-100/60 space-y-1.5 text-xs sm:text-sm">

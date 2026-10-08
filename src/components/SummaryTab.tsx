@@ -37,32 +37,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   compositions,
   audioItems,
   expressions,
-  onNavigateTab,
-  onUpdateExpression,
-  onUpdateItemBase64,
-}) => {
-  const todayStr = getTodayDateString();
-
-  // Category view: 'writing' | 'audio' | 'expressions' | 'all'
-  const [selectedCategory, setSelectedCategory] = useState<SummaryCategory>('writing');
-
-  // Search and Sort
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
-
-  // Optional date filter (defaults to 'all' so it is completely date-independent by default)
-  const [optionalDateFilter, setOptionalDateFilter] = useState<string>('');
-
-  // Background pre-fetch audio base64 for items missing audioBase64 to guarantee instant mobile playback
-  useEffect(() => {
-    if (!onUpdateItemBase64) return;
-    audioItems.forEach(async (item) => {
-      if (!item.audioBase64 && item.audioUrl) {
-        try {
-          const res = await fetch(`/api/audio/resolve-base64?path=${encodeURIComponent(item.audioUrl)}&id=${encodeURIComponent(item.id)}`);
-          if (res.ok) {
-            const data = await res.json();
+  onNavigateTab,…281 tokens truncated…json();
             if (data?.base64) {
               onUpdateItemBase64(item.id, data.base64);
             }
@@ -83,7 +58,8 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
           c.korean.toLowerCase().includes(q) ||
           c.english.toLowerCase().includes(q) ||
           (c.polished && c.polished.toLowerCase().includes(q)) ||
-          (c.polishedTip && c.polishedTip.toLowerCase().includes(q))
+          (c.polishedTip && c.polishedTip.toLowerCase().includes(q)) ||
+          (c.writingMemo && c.writingMemo.toLowerCase().includes(q))
       );
     }
 
@@ -425,6 +401,8 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
                       {comp.korean}
                     </p>
                   </div>
+
+                  {comp.writingMemo && <details className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-xs sm:text-sm"><summary className="cursor-pointer font-semibold text-amber-900">작성 메모</summary><p className="mt-2 whitespace-pre-wrap break-words text-slate-600">{comp.writingMemo}</p></details>}
 
                   {/* 1차 영어 작문 */}
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5">
