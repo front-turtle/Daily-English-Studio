@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { KeyExpression } from '../types';
 import { playEnglishSpeech } from '../utils/speech';
+import { ExpressionAIReview } from './ExpressionAIReview';
 import { SpeechPlayButton } from './SpeechPlayButton';
 import { getTodayDateString } from '../data/initialData';
 import {
@@ -169,6 +170,7 @@ export const KeyExpressionsTab: React.FC<KeyExpressionsTabProps> = ({
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-700">한글 뜻 *</label>
+              <ExpressionAIReview english={expressionInput} korean={meaningInput} onApply={(english, korean) => { setExpressionInput(english); setMeaningInput(korean); }} />
               <input
                 type="text"
                 value={meaningInput}
@@ -179,6 +181,7 @@ export const KeyExpressionsTab: React.FC<KeyExpressionsTabProps> = ({
             </div>
           </div>
 
+          <p className="text-[11px] text-slate-500">한글만 쓰면 영작, 영어만 쓰면 한글 뜻을 제안하고, 둘 다 쓰면 의미를 검토해요.</p>
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-700">
               활용 팁 / 상황 메모 <span className="text-slate-400 font-normal">(선택)</span>
@@ -283,6 +286,7 @@ export const KeyExpressionsTab: React.FC<KeyExpressionsTabProps> = ({
                         className="w-full px-2.5 py-1.5 rounded-lg border border-indigo-300 font-bold text-xs sm:text-sm"
                         placeholder="영어 표현"
                       />
+                      <ExpressionAIReview key={item.id} english={editExpression} korean={editMeaning} onApply={(english, korean) => { setEditExpression(english); setEditMeaning(korean); }} />
                       <input
                         type="text"
                         value={editMeaning}
