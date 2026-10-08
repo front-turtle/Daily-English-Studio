@@ -37,3 +37,4 @@ for (const width of [1280, 375, 320]) {
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   });
 }
+

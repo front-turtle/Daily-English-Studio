@@ -37,7 +37,32 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   compositions,
   audioItems,
   expressions,
-  onNavigateTab,…281 tokens truncated…json();
+  onNavigateTab,
+  onUpdateExpression,
+  onUpdateItemBase64,
+}) => {
+  const todayStr = getTodayDateString();
+
+  // Category view: 'writing' | 'audio' | 'expressions' | 'all'
+  const [selectedCategory, setSelectedCategory] = useState<SummaryCategory>('writing');
+
+  // Search and Sort
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+
+  // Optional date filter (defaults to 'all' so it is completely date-independent by default)
+  const [optionalDateFilter, setOptionalDateFilter] = useState<string>('');
+
+  // Background pre-fetch audio base64 for items missing audioBase64 to guarantee instant mobile playback
+  useEffect(() => {
+    if (!onUpdateItemBase64) return;
+    audioItems.forEach(async (item) => {
+      if (!item.audioBase64 && item.audioUrl) {
+        try {
+          const res = await fetch(`/api/audio/resolve-base64?path=${encodeURIComponent(item.audioUrl)}&id=${encodeURIComponent(item.id)}`);
+          if (res.ok) {
+            const data = await res.json();
             if (data?.base64) {
               onUpdateItemBase64(item.id, data.base64);
             }
@@ -786,3 +811,4 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
     </div>
   );
 };
+

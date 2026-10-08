@@ -578,3 +578,4 @@ export const DailyWritingTab: React.FC<DailyWritingTabProps> = ({
     </div>
   );
 };
+

@@ -11,3 +11,4 @@ export function WritingMemo({ value = '', onSave }: { value?: string; onSave: (m
     </> : <p className="whitespace-pre-wrap break-words text-slate-600">{value || '핵심 내용이나 문장 구성 과정을 기록해 보세요.'}</p>}
   </div>;
 }
+
