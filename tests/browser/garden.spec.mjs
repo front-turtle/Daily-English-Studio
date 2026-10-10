@@ -44,10 +44,32 @@ for (const width of [1280, 375, 320]) {
       await expect(page.getByRole('heading', { name: scenery.name, exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await expect(page.getByTestId('living-garden')).toBeVisible();
+      await expect(page.locator('.garden-plant')).toHaveCount(1);
+      await expect(page.getByTestId('garden-growing-plant')).toContainText(`${days}일`);
     }
     const asset = await page.request.get('/Daily-English-Studio/garden-meadow-v1.webp');
     expect(asset.ok()).toBe(true);
     expect((await asset.body()).length).toBeLessThan(400000);
+    await page.evaluate(() => window.showGarden(7, '어린나무'));
+    await expect(page.locator('.garden-plant--tree')).toBeVisible();
+    await garden.dispatchEvent('pointerdown', {pointerId:1,isPrimary:true,button:0,clientX:250,clientY:150});
+    await garden.dispatchEvent('pointerup', {pointerId:1,isPrimary:true,button:0,clientX:150,clientY:152});
+    await expect(garden).toHaveAttribute('data-viewing-day','3');
+    await expect(garden).toHaveAttribute('data-landscape','meadow');
+    await expect(page.locator('.garden-plant--sprout')).toBeVisible();
+    await page.getByRole('button',{name:'이전 성장 모습',exact:true}).click();
+    await expect(garden).toHaveAttribute('data-viewing-day','0');
+    await expect(page.getByRole('button',{name:'이전 성장 모습',exact:true})).toBeDisabled();
+    await expect(page.getByTestId('garden-butterfly')).toHaveCount(0);
+    await page.getByRole('button',{name:'다음 성장 모습',exact:true}).click();
+    await expect(garden).toHaveAttribute('data-viewing-day','3');
+    await page.getByRole('button',{name:'현재로',exact:true}).click();
+    await expect(garden).toHaveAttribute('data-viewing-day','7');
+    await expect(page.getByRole('button',{name:'다음 성장 모습',exact:true})).toBeDisabled();
+    // Vertical scrolling must not navigate the gallery.
+    await garden.dispatchEvent('pointerdown',{pointerId:2,isPrimary:true,button:0,clientX:250,clientY:150});
+    await garden.dispatchEvent('pointerup',{pointerId:2,isPrimary:true,button:0,clientX:180,clientY:300});
+    await expect(garden).toHaveAttribute('data-viewing-day','7');
   });
 }
 

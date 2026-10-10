@@ -49,7 +49,7 @@ function GrowthScene({
   const stageRanges = ['0~30일', '31~120일', '121~240일', '241~365일'];
 
   return <div className="space-y-4">
-    <LivingGarden streak={streak} stageName={stage.name} />
+    <LivingGarden streak={streak} longest={longest} stageName={stage.name} />
 
     <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
       <div className="grid grid-cols-4 gap-1">
