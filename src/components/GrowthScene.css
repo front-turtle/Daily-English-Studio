@@ -1,4 +1,12 @@
 
+.living-garden { touch-action: pan-y; }
+.garden-growth-label { position:absolute; bottom:13%; left:50%; transform:translateX(-50%); white-space:nowrap; padding:4px 9px; border-radius:20px; background:#f7fbf0e8; font-size:10px; color:#28513c; }
+.garden-history { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:12px; }
+.garden-history>div { text-align:center; font-size:11px; }
+.garden-history span { display:block; font-size:10px; color:#799183; margin-top:2px; }
+.garden-history button { display:grid; place-items:center; min-width:32px; min-height:32px; padding:5px; border-radius:20px; background:#f2f6f3; color:#397354; }
+.garden-history button:disabled { opacity:.3; }
+.garden-history .garden-return { font-size:11px; padding:5px 9px; }
 .garden-wrapper {
   color: #2d5847;
   min-width: 0
