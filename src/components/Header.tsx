@@ -65,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div>
             <span className="font-bold text-sm sm:text-lg text-slate-900 tracking-tight whitespace-nowrap">
-              Daily<span className="hidden min-[360px]:inline"> English</span>
+              Daily<span className="hidden min-[420px]:inline"> English</span>
             </span>
           </div>
         </div>
@@ -158,11 +158,11 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => setIsAccountModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-indigo-300 shadow-2xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1.5 px-2 min-[360px]:px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-indigo-300 shadow-2xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
               title="계정 관리 및 데이터 백업 열기"
             >
               <User className="w-3.5 h-3.5 text-indigo-600" />
-              <span>계정</span>
+              <span className="hidden min-[360px]:inline">계정</span>
             </button>
           )}
         </div>
