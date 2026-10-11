@@ -15,6 +15,7 @@ import { AudioShadowingTab } from './components/AudioShadowingTab';
 import { KeyExpressionsTab } from './components/KeyExpressionsTab';
 import { SummaryTab } from './components/SummaryTab';
 import { AiTutorTab } from './components/AiTutorTab';
+import { StickyNotesTab } from './components/StickyNotesTab';
 import { SmartReviewTab } from './components/SmartReviewTab';
 import { ReviewTabLabel } from './components/ReviewTabLabel';
 import { useSmartReview } from './hooks/useSmartReview';
@@ -693,6 +694,8 @@ export function App() {
         onLogoClick={() => setActiveTab('writing')}
         onAiTutorClick={() => setActiveTab('ai')}
         isAiTutorActive={activeTab === 'ai'}
+        onNotesClick={() => setActiveTab('notes')}
+        isNotesActive={activeTab === 'notes'}
         compositions={compositions}
         audioItems={audioItems}
         expressions={expressions}
@@ -700,7 +703,7 @@ export function App() {
       />
 
       {/* Diary-style Global Date Controller Bar with Arrow Buttons & Dropdown Calendar (Hidden on Summary tab per user request) */}
-      {activeTab !== 'summary' && activeTab !== 'ai' && activeTab !== 'review' && (
+      {activeTab !== 'summary' && activeTab !== 'ai' && activeTab !== 'review' && activeTab !== 'notes' && (
         <DiaryDateBar
           currentDate={currentDate}
           onDateChange={setCurrentDate}
@@ -771,6 +774,9 @@ export function App() {
           />
         </div>
 
+        <div className={activeTab === 'notes' ? 'block' : 'hidden'}>
+          <StickyNotesTab />
+        </div>
         <div className={activeTab === 'summary' ? 'block' : 'hidden'}>
           <SummaryTab
             compositions={compositions}

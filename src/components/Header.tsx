@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Download, Bot } from 'lucide-react';
+import { User, Download, Bot, StickyNote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { DailyComposition, AudioItem, KeyExpression, BackupData } from '../types';
 import { AccountModal } from './AccountModal';
@@ -11,6 +11,8 @@ interface HeaderProps {
   onLogoClick?: () => void;
   onAiTutorClick?: () => void;
   isAiTutorActive?: boolean;
+  onNotesClick?: () => void;
+  isNotesActive?: boolean;
   compositions: DailyComposition[];
   audioItems: AudioItem[];
   expressions: KeyExpression[];
@@ -21,6 +23,8 @@ export const Header: React.FC<HeaderProps> = ({
   onLogoClick,
   onAiTutorClick,
   isAiTutorActive = false,
+  onNotesClick,
+  isNotesActive = false,
   compositions,
   audioItems,
   expressions,
@@ -61,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div>
             <span className="font-bold text-sm sm:text-lg text-slate-900 tracking-tight whitespace-nowrap">
-              Daily<span className="hidden min-[360px]:inline"> English</span>
+              Daily<span className="hidden min-[420px]:inline"> English</span>
             </span>
           </div>
         </div>
@@ -82,6 +86,10 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline">AI 튜터</span>
           </button>
           <PronunciationPopup compact />
+          <button type="button" onClick={onNotesClick} title="메모장 열기" aria-label="메모장 열기" aria-pressed={isNotesActive}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-xl border px-2 py-1.5 text-xs font-bold transition-colors ${isNotesActive ? 'bg-amber-300 border-amber-400 text-amber-950' : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'}`}>
+            <StickyNote className="w-3.5 h-3.5" /><span className="hidden sm:inline">메모장</span>
+          </button>
           {/* PWA Install Button (Visible on mobile & desktop until installed) */}
           {!isInstalled && (
             <button
@@ -150,11 +158,11 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => setIsAccountModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-indigo-300 shadow-2xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1.5 px-2 min-[360px]:px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-indigo-300 shadow-2xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
               title="계정 관리 및 데이터 백업 열기"
             >
               <User className="w-3.5 h-3.5 text-indigo-600" />
-              <span>계정</span>
+              <span className="hidden min-[360px]:inline">계정</span>
             </button>
           )}
         </div>

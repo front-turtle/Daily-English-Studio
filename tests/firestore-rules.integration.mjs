@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { startReviewInDatabase, saveReviewAnswerInDatabase } from '../src/lib/smartReviewRepository.ts';
+import { writeStickyNote, removeStickyNote } from '../src/lib/stickyNotesRepository.ts';
 
 let environment;
 const now = Date.now();
@@ -16,6 +17,24 @@ const ref = uid => doc(environment.authenticatedContext(uid).firestore(), 'users
 before(async () => { environment = await initializeTestEnvironment({ projectId: 'demo-smart-review', firestore: { rules: readFileSync('firestore.rules', 'utf8') } }); });
 beforeEach(async () => { await environment.clearFirestore(); });
 after(async () => { await environment?.cleanup(); });
+test('sticky notes isolate owners and merge independent devices without recreating deleted notes', async () => {
+  const first = environment.authenticatedContext('owner').firestore();
+  const second = environment.authenticatedContext('owner').firestore();
+  const stranger = environment.authenticatedContext('stranger').firestore();
+  const guest = environment.unauthenticatedContext().firestore();
+  const note = { id: 'one', title: '', body: '', color: 'yellow', createdAt: now, updatedAt: now };
+  await assertSucceeds(writeStickyNote(first, 'owner', 'one', {}, note));
+  await assertFails(writeStickyNote(stranger, 'owner', 'one', { body: 'attack' }));
+  await assertFails(getDoc(doc(guest, 'users', 'owner')));
+  await assertFails(removeStickyNote(stranger, 'owner', 'one'));
+  await Promise.all([writeStickyNote(first, 'owner', 'one', { body: 'device one' }), writeStickyNote(second, 'owner', 'two', {}, { ...note, id: 'two', body: 'device two' })]);
+  await Promise.all([writeStickyNote(first, 'owner', 'one', { title: 'title' }), writeStickyNote(second, 'owner', 'one', { color: 'blue' })]);
+  const saved = (await getDoc(doc(second, 'users', 'owner'))).data().stickyNotes;
+  assert.equal(saved.one.body, 'device one'); assert.equal(saved.one.title, 'title'); assert.equal(saved.one.color, 'blue'); assert.equal(saved.two.body, 'device two');
+  await removeStickyNote(second, 'owner', 'one');
+  await assert.rejects(writeStickyNote(first, 'owner', 'one', { body: 'stale edit' }), /삭제된 메모/);
+  assert.equal((await getDoc(doc(first, 'users', 'owner'))).data().stickyNotes.one, undefined);
+});
 test('only owner can read/create/update; anonymous and other accounts are denied', async () => {
   await assertSucceeds(setDoc(ref('owner'), base));
   await assertSucceeds(getDoc(ref('owner')));
