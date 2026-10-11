@@ -17,7 +17,7 @@ export function useStickyNotes(uid?: string) {
       return Object.fromEntries(Object.entries(raw).filter(([id, value]) => {
         const draft = value as Draft;
         return /^[a-zA-Z0-9-]+$/.test(id) && draft?.note?.id === id && parseNotes({ [id]: draft.note }).length && draft.patch && typeof draft.create === 'boolean';
-      }));
+      })) as Record<string, Draft>;
     } catch { return {}; }
   });
   const drafts = useRef(pending);
