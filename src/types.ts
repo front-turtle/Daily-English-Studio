@@ -44,7 +44,7 @@ export interface AiTutorMessage {
   createdAt: number;
 }
 
-export type ActiveTab = 'writing' | 'audio-shadowing' | 'expressions' | 'ai' | 'summary' | 'review';
+export type ActiveTab = 'writing' | 'audio-shadowing' | 'expressions' | 'ai' | 'summary' | 'review' | 'notes';
 
 export interface BackupData {
   version: number;
