@@ -24,8 +24,11 @@ export function useStickyNotes(uid?: string) {
   // Keep successfully sent edits visible until a Firestore snapshot confirms them.
   // Otherwise the UI briefly reverts to an older cloud value after each save.
   const [confirmed, setConfirmed] = useState<Record<string, Draft>>({});
+  const latestCloud = useRef<StickyNote[]>([]);
   const confirmedRef = useRef<Record<string, Draft>>({});
   const acknowledge = (id: string, draft: Draft) => {
+    const remote = latestCloud.current.find(note => note.id === id);
+    if (remote && Object.entries(draft.patch).every(([field, value]) => remote[field as keyof StickyNote] === value)) return;
     const next = { ...confirmedRef.current, [id]: draft };
     confirmedRef.current = next;
     if (mounted.current) setConfirmed(next);
@@ -69,6 +72,7 @@ export function useStickyNotes(uid?: string) {
     if (!uid) return;
     const unsubscribe = onSnapshot(doc(db, 'users', uid), snapshot => {
       const remote = parseNotes(snapshot.data()?.stickyNotes);
+      latestCloud.current = remote;
       const remoteMap = new Map(remote.map(note => [note.id, note]));
       const remaining = Object.fromEntries(Object.entries(confirmedRef.current).filter(([id, draft]) => {
         const found = remoteMap.get(id);
