@@ -21,6 +21,15 @@ export function useStickyNotes(uid?: string) {
     } catch { return {}; }
   });
   const drafts = useRef(pending);
+  // Keep successfully sent edits visible until a Firestore snapshot confirms them.
+  // Otherwise the UI briefly reverts to an older cloud value after each save.
+  const [confirmed, setConfirmed] = useState<Record<string, Draft>>({});
+  const confirmedRef = useRef<Record<string, Draft>>({});
+  const acknowledge = (id: string, draft: Draft) => {
+    const next = { ...confirmedRef.current, [id]: draft };
+    confirmedRef.current = next;
+    if (mounted.current) setConfirmed(next);
+  };
   const busy = useRef(false);
   const deleting = useRef(new Set<string>());
   const mounted = useRef(true);
@@ -39,6 +48,8 @@ export function useStickyNotes(uid?: string) {
         if (deleting.current.has(id)) continue;
         try {
           await writeStickyNote(db, uid, id, draft.patch, draft.create ? draft.note : undefined);
+          // Preserve the just-written version through the server round trip.
+          acknowledge(id, draft);
           const current = drafts.current[id];
           if (current?.revision === draft.revision) {
             const next = { ...drafts.current }; delete next[id]; persist(next);
@@ -57,14 +68,26 @@ export function useStickyNotes(uid?: string) {
     mounted.current = true;
     if (!uid) return;
     const unsubscribe = onSnapshot(doc(db, 'users', uid), snapshot => {
-      setCloud(parseNotes(snapshot.data()?.stickyNotes)); setReady(true);
+      const remote = parseNotes(snapshot.data()?.stickyNotes);
+      const remoteMap = new Map(remote.map(note => [note.id, note]));
+      const remaining = Object.fromEntries(Object.entries(confirmedRef.current).filter(([id, draft]) => {
+        const found = remoteMap.get(id);
+        // Ignore out-of-date snapshots while a local write is waiting to become visible.
+        return !found || Object.entries(draft.patch).some(([field, value]) =>
+          found[field as keyof StickyNote] !== value);
+      })) as Record<string, Draft>;
+      if (Object.keys(remaining).length !== Object.keys(confirmedRef.current).length) {
+        confirmedRef.current = remaining;
+        if (mounted.current) setConfirmed(remaining);
+      }
+      setCloud(remote); setReady(true);
     }, () => { setError('메모를 불러오지 못했습니다. 연결을 확인해 주세요.'); });
     const timer = window.setInterval(() => { if (!busy.current) void flushRef.current(); }, 700);
     const online = () => void flushRef.current();
     window.addEventListener('online', online);
     return () => { mounted.current = false; unsubscribe(); clearInterval(timer); window.removeEventListener('online', online); };
   }, [uid]);
-  const notes = [...new Map([...cloud, ...Object.values(pending).map(d => ({ ...(cloud.find(n => n.id === d.note.id) || d.note), ...d.patch }))].map(n => [n.id, n])).values()]
+  const notes = [...new Map([...cloud, ...Object.values(confirmed).map(d => ({ ...(cloud.find(n => n.id === d.note.id) || d.note), ...d.patch })), ...Object.values(pending).map(d => ({ ...(cloud.find(n => n.id === d.note.id) || d.note), ...d.patch }))].map(n => [n.id, n])).values()]
     .sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id));
   const change = (note: StickyNote, patch: NotePatch, create = false) => {
     retryAfter.current = 0;
@@ -82,6 +105,8 @@ export function useStickyNotes(uid?: string) {
       while (busy.current) await new Promise(resolve => setTimeout(resolve, 50));
       await removeStickyNote(db, uid, id);
       const next = { ...drafts.current }; delete next[id]; persist(next);
+      const acknowledged = { ...confirmedRef.current }; delete acknowledged[id]; confirmedRef.current = acknowledged;
+      if (mounted.current) setConfirmed(acknowledged);
       if (mounted.current) { setCloud(items => items.filter(n => n.id !== id)); setError(''); }
     } catch { if (mounted.current) setError('삭제하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.'); }
     finally { deleting.current.delete(id); }
