@@ -38,6 +38,25 @@ function Butterfly({ variant }: { variant: number }) {
   return <span className={`garden-butterfly garden-butterfly--${variant}`} data-testid="garden-butterfly"><svg viewBox="0 0 50 44" aria-hidden="true"><g className="garden-wings"><path d="M24 23 C-2 -4 -5 24 17 26 C1 43 21 46 24 27Z" fill={variant % 2 ? '#f0b75c' : '#82a6ed'} /><path d="M26 23 C52 -4 55 24 33 26 C49 43 29 46 26 27Z" fill={variant % 2 ? '#f6ce8e' : '#b6cafa'} /><path d="M9 14 L20 22 M41 14 L30 22" stroke="#fff2d9" strokeWidth="2" opacity=".8" /></g><path d="M25 18 V31 M25 19 L21 13 M25 19 L29 13" stroke="#414e4b" strokeWidth="2" strokeLinecap="round" /></svg></span>;
 }
 
+function ForestBird({ kind }: { kind: string }) {
+  const isOwl = kind === '부엉이';
+  return <svg className="garden-songbird" viewBox="0 0 72 60" role="presentation" aria-hidden="true">
+    <defs><linearGradient id="garden-bird-feather" x1="0" y1="0" x2="1" y2="1"><stop stopColor={isOwl ? '#cfab79' : '#9dd4db'} /><stop offset=".6" stopColor={isOwl ? '#a77b57' : '#538eaf'} /><stop offset="1" stopColor={isOwl ? '#795b4a' : '#45698f'} /></linearGradient></defs>
+    <path d="M17 34 Q5 22 3 13 Q19 14 28 31Z" fill="#6c9b9b" opacity=".88"/>
+    <path d="M19 38 Q9 45 6 51 Q22 47 31 41Z" fill="#54828d"/>
+    <path className="garden-bird-wing garden-bird-wing--back" d="M30 34 Q13 19 17 3 Q34 12 44 31Z" fill="#77b0c1" stroke="#bce4df" strokeWidth="1"/>
+    <ellipse cx="37" cy="35" rx="21" ry="15" fill="url(#garden-bird-feather)"/>
+    <ellipse cx="40" cy="40" rx="14" ry="8" fill="#f7e3b7"/>
+    <circle cx="51" cy="26" r="12" fill="url(#garden-bird-feather)"/>
+    {isOwl && <path d="M43 20 L41 10 L49 17 M56 17 L63 10 L62 24" stroke="#957052" strokeWidth="5" strokeLinecap="round"/>}
+    <path d="M61 27 L70 31 L61 34Z" fill="#efb765"/>
+    <circle cx="55" cy="25" r="3.2" fill="#302c30"/><circle cx="56" cy="24" r="1.1" fill="white"/>
+    <path className="garden-bird-wing garden-bird-wing--front" d="M31 34 Q21 18 30 7 Q49 13 51 36 Q38 45 31 34Z" fill="#87bdd0" stroke="#d4eeee" strokeWidth="1.2"/>
+    <path d="M31 26 L42 37 M30 32 L42 40" stroke="#5b91a8" strokeWidth="1" opacity=".7"/>
+    <path d="M36 48 L35 53 M43 48 L44 53" stroke="#a47a54" strokeWidth="1.7" strokeLinecap="round"/>
+  </svg>;
+}
+
 export function GrowthScene({ streak, stageName, longest = streak }: { streak: number; stageName: string; longest?: number }) {
   const [historyDay, setHistoryDay] = useState<number | null>(null);
   const history = GROWTH_STAGES.filter(s => s.days <= Math.max(streak, longest)).map(s => s.days).filter(d => d !== streak).reverse();
@@ -90,7 +109,7 @@ export function GrowthScene({ streak, stageName, longest = streak }: { streak: n
         <div className="garden-trees" aria-hidden="true"><div className="garden-tree" style={{ '--tree-position': '50%', '--tree-scale': plantScale } as React.CSSProperties}><Plant kind={plantKind} seed={`${seed}-my-plant`} /></div></div>
         <span className="garden-growth-label" data-testid="garden-growing-plant">내가 키우는 {viewingDay < 7 ? growth.name : viewingDay < 14 ? '어린나무' : '큰나무'} · {viewingDay}일</span>
         {viewingDay >= 3 && <><Butterfly variant={1} />{viewingDay >= 21 && <Butterfly variant={2} />}</>}
-        <div className="garden-animals" aria-hidden="true">{animals.filter(a => a.name !== '나비').slice(-6).map((a, i) => <span key={a.name} title={`${a.days}일 · ${a.name}`} className={`garden-animal ${['꿀벌', '새', '부엉이', '앵무새', '독수리'].includes(a.name) ? 'garden-animal--flying' : ''}`} style={{ '--animal-index': i } as React.CSSProperties}>{a.emoji}</span>)}</div>
+        <div className="garden-animals" aria-hidden="true">{animals.filter(a => a.name !== '나비').slice(-6).map((a, i) => <span key={a.name} title={`${a.days}일 · ${a.name}`} className={`garden-animal ${['꿀벌', '새', '부엉이', '앵무새', '독수리'].includes(a.name) ? 'garden-animal--flying' : ''}`} style={{ '--animal-index': i } as React.CSSProperties}>{['새', '부엉이', '앵무새', '독수리'].includes(a.name) ? <ForestBird kind={a.name} /> : a.emoji}</span>)}</div>
       </div>
       <div className="garden-weather-effects" aria-hidden="true">
         {Array.from({ length: 16 }, (_, i) => <i className="garden-raindrop" key={`rain-${i}`} style={{ '--particle': i } as React.CSSProperties} />)}
