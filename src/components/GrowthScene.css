@@ -620,3 +620,20 @@
 @keyframes garden-wing-flap { from { transform: rotate(-14deg) scaleX(.88); } to { transform: rotate(24deg) scaleX(1.04); } }
 .garden-still .garden-bird-wing { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .garden-bird-wing { animation: none; } }
+
+/* Unified illustrated companions: consistent scale and species-aware motion. */
+.forest-animal-art { width: 49px; height: 45px; display: block; overflow: visible; filter: drop-shadow(0 2px 2px rgba(39,73,50,.2)); }
+.garden-animal:has(.forest-animal-art) { font-size: initial; }
+.garden-animal:has(.forest-animal-ground) { animation: garden-animal 7.4s ease-in-out infinite; }
+.garden-animal:has(.forest-animal-bird) { animation: garden-bird 10s ease-in-out infinite; }
+.garden-animal:has(.forest-animal-bee) { animation: garden-bee-hover 2.8s ease-in-out infinite; }
+.forest-art-wing { transform-box: fill-box; transform-origin: 75% 80%; animation: garden-wing-flap .48s ease-in-out infinite alternate; }
+.forest-art-wing--back { animation-delay: -.24s; transform-origin: 85% 88%; }
+.forest-art-wings { transform-box: fill-box; transform-origin: center; animation: garden-flutter .4s ease-in-out infinite alternate; }
+.forest-art-tail { transform-box: fill-box; transform-origin: right center; animation: garden-tail-wag 3.6s ease-in-out infinite alternate; }
+@keyframes garden-bee-hover { 0%,100% {transform:translate(0,0)} 25% {transform:translate(5px,-4px)} 50% {transform:translate(-2px,-7px)} 75% {transform:translate(-5px,-2px)} }
+@keyframes garden-tail-wag {from {transform:rotate(-5deg)} to {transform:rotate(7deg)}}
+.garden-still .forest-art-wing,.garden-still .forest-art-wings,.garden-still .forest-art-tail { animation-play-state: paused; }
+@media (prefers-reduced-motion:reduce) {
+ .forest-art-wing,.forest-art-wings,.forest-art-tail {animation:none!important}
+}
