@@ -104,7 +104,7 @@ export function GrowthScene({ streak, stageName, longest = streak }: { streak: n
     <div className="garden-history" aria-label="성장 모습 돌아보기">
       <button type="button" onClick={() => move(1)} disabled={historyIndex === pages.length - 1} aria-label="이전 성장 모습"><ChevronLeft size={16} /></button>
       <div aria-live="polite"><strong>{browsing ? `${viewingDay}일의 ${growth.name}` : `지금의 모습 · ${streak}일`}</strong><span>왼쪽으로 밀어 지난 모습을 보세요</span></div>
-      {browsing && <button type="button" onClick={() => setHistoryDay(null)} className="garden-return">현재로</button>}
+      <button type="button" onClick={() => setHistoryDay(null)} className="garden-return" style={{ visibility: browsing ? 'visible' : 'hidden' }} disabled={!browsing} aria-hidden={!browsing} tabIndex={browsing ? 0 : -1}>현재로</button>
       <button type="button" onClick={() => move(-1)} disabled={!browsing} aria-label="다음 성장 모습"><ChevronRight size={16} /></button>
     </div>
     <div className="garden-toolbar"><span className="garden-companions">함께 사는 동물 친구 <strong>{animals.length}마리</strong></span><div className="garden-weather-controls" role="group" aria-label="작은 정원의 날씨">
