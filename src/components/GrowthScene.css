@@ -610,3 +610,13 @@
 
 
 .garden-topline>div{padding:7px 11px;margin:-7px -11px;border-radius:14px;background:#f7fbf0c2;max-width:calc(100% - 42px)}
+
+/* The birds use independently moving SVG wings rather than static emoji glyphs. */
+.garden-songbird { display: block; width: 51px; height: 44px; overflow: visible; filter: drop-shadow(0 2px 2px #1a49382b); }
+.garden-bird-wing { transform-box: fill-box; transform-origin: 75% 85%; animation: garden-wing-flap .46s ease-in-out infinite alternate; }
+.garden-bird-wing--back { animation-delay: -.22s; transform-origin: 80% 90%; }
+.garden-animal:has(.garden-songbird) { font-size: initial; }
+.garden-animal:has(.garden-songbird) { animation-duration: 11s; }
+@keyframes garden-wing-flap { from { transform: rotate(-14deg) scaleX(.88); } to { transform: rotate(24deg) scaleX(1.04); } }
+.garden-still .garden-bird-wing { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .garden-bird-wing { animation: none; } }
