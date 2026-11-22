@@ -40,7 +40,7 @@ test('header pronunciation works from every tab without opening AI tutor', async
   await expect(page.getByRole('dialog')).not.toBeVisible();
 });
 
-test('60 second WAV compresses in the browser, saves and survives reload', async ({ page }) => {
+test('uncompressed WAV upload preserves original and rejects files above 5MB', async ({ page }) => {
   const seconds = 60, rate = 22050, length = seconds * rate;
   const wav = Buffer.alloc(44 + length * 2);
   wav.write('RIFF', 0); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8);
@@ -48,19 +48,25 @@ test('60 second WAV compresses in the browser, saves and survives reload', async
   wav.writeUInt32LE(rate, 24); wav.writeUInt32LE(rate * 2, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34);
   wav.write('data', 36); wav.writeUInt32LE(length * 2, 40);
   for (let i = 0; i < length; i++) wav.writeInt16LE(Math.round(Math.sin(i * 440 * 2 * Math.PI / rate) * 10000), 44 + i * 2);
-  const alerts = [];
-  page.on('dialog', async dialog => { alerts.push(dialog.message()); await dialog.dismiss(); });
+
   await page.goto('/Daily-English-Studio/');
   await page.getByRole('button', { name: '음성 & 녹음', exact: true }).click();
   await page.locator('input[type=file]').first().setInputFiles({ name: 'synthetic-60-seconds.wav', mimeType: 'audio/wav', buffer: wav });
+  await expect(page.getByText('선택됨: synthetic-60-seconds.wav', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: '파일 업로드하기', exact: true }).click();
-  await expect(page.getByText('음성 파일이 저장되었습니다!', { exact: true })).toBeVisible({ timeout: 45000 });
-  expect(alerts).toEqual([]);
+  await expect(page.getByText('원본 음성 파일이 저장되었습니다!', { exact: true })).toBeVisible({ timeout: 45000 });
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('audio_items_v2')));
-  expect(saved[0].audioBase64.startsWith('data:audio/mpeg;base64,')).toBe(true);
-  expect(saved[0].audioBase64.length).toBeLessThanOrEqual(400000);
+  expect(saved[0].fileName).toBe('synthetic-60-seconds.wav');
+  expect(saved[0].audioBase64?.startsWith('data:audio/mpeg;base64,')).toBe(false);
+  expect(saved[0].audioBase64?.startsWith('data:audio/wav;base64,') || saved[0].audioUrl?.startsWith('indexeddb:')).toBe(true);
+
   await page.reload();
   await page.getByRole('button', { name: /음성 & 녹음/ }).click();
   await expect(page.getByText('synthetic-60-seconds', { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('audio_items_v2'))[0].audioBase64)).toEqual(saved[0].audioBase64);
+
+  await page.locator('input[type=file]').first().setInputFiles({
+    name: 'over-limit.wav', mimeType: 'audio/wav', buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+  });
+  await expect(page.getByRole('alert')).toContainText('5MB를 초과');
+  await expect(page.getByRole('button', { name: '파일 업로드하기', exact: true })).toBeDisabled();
 });
