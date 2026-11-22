@@ -1,5 +1,6 @@
 import type { AudioItem } from '../types.ts';
 import { base64ToBlob, blobToBase64, getAudioFromStorage, saveAudioToStorage } from './audioStorage.ts';
+import { firestoreAudioChunkCount, readChunkedAudio } from './firestoreAudioChunks.ts';
 
 // Serialize fallback writes so an older, slower snapshot cannot replace a new one.
 let queue: Promise<void> = Promise.resolve();
@@ -11,7 +12,9 @@ export function cacheAudioItems(items: AudioItem[]): Promise<void> {
       const compact = { ...item };
       if (item.audioBase64) {
         await saveAudioToStorage(item.id, base64ToBlob(item.audioBase64), true);
-        compact.audioBase64 = ''; compact.audioUrl = `indexeddb:${item.id}`;
+        compact.audioBase64 = '';
+        // Preserve cloud sync marker even after moving large audio into IndexedDB.
+        compact.audioUrl = firestoreAudioChunkCount(item.audioUrl) ? item.audioUrl : `indexeddb:${item.id}`;
       }
       if (item.myRecordingBase64) {
         await saveAudioToStorage(`rec-${item.id}`, base64ToBlob(item.myRecordingBase64), true);
@@ -28,10 +31,20 @@ export function cacheAudioItems(items: AudioItem[]): Promise<void> {
 export async function hydrateAudioItems(items: AudioItem[], strict = false): Promise<AudioItem[]> {
   return Promise.all(items.map(async item => {
     const restored = { ...item };
-    if (!item.audioBase64 && item.audioUrl?.startsWith('indexeddb:')) {
+    if (!item.audioBase64 && (item.audioUrl?.startsWith('indexeddb:') || firestoreAudioChunkCount(item.audioUrl))) {
       const blob = await getAudioFromStorage(item.id);
-      if (!blob && strict) throw new Error('기기에 보관된 원본 음성을 찾을 수 없어 백업을 중단했습니다.');
-      if (blob) { restored.audioBase64 = await blobToBase64(blob); restored.audioUrl = ''; }
+      if (blob) {
+        restored.audioBase64 = await blobToBase64(blob);
+        restored.audioUrl = '';
+      } else {
+        const chunkCount = firestoreAudioChunkCount(item.audioUrl);
+        if (chunkCount) {
+          restored.audioBase64 = await readChunkedAudio(item.id, chunkCount);
+          restored.audioUrl = '';
+        } else if (strict) {
+          throw new Error('기기에 보관된 원본 음성을 찾을 수 없어 백업을 중단했습니다.');
+        }
+      }
     }
     if (!item.myRecordingBase64 && item.myRecordingUrl?.startsWith('indexeddb:')) {
       const blob = await getAudioFromStorage(`rec-${item.id}`);
