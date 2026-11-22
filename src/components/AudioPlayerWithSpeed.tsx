@@ -33,7 +33,7 @@ export const AudioPlayerWithSpeed: React.FC<AudioPlayerWithSpeedProps> = ({
     if (audioBase64 && audioBase64.length > 20) {
       return normalizeBase64DataUrl(audioBase64, src);
     }
-    return src || '';
+    return src?.startsWith('firestore-chunks:') ? '' : (src || '');
   });
   const [isLoadingSource, setIsLoadingSource] = useState<boolean>(!playableSrc);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -133,7 +133,11 @@ export const AudioPlayerWithSpeed: React.FC<AudioPlayerWithSpeedProps> = ({
     } catch (err: any) {
       console.warn('Audio source resolve warning:', err);
       if (!playableSrc) {
-        setPlayableSrc(src);
+        if (src?.startsWith('firestore-chunks:')) {
+          setLoadError('음원 다운로드에 실패했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+        } else {
+          setPlayableSrc(src);
+        }
       }
     } finally {
       setIsLoadingSource(false);
