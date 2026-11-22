@@ -3,7 +3,7 @@ import { recordingBudget } from '../utils/recordingBudget';
 import React, { useState, useRef, useEffect } from 'react';
 import { AudioItem } from '../types';
 import { AudioPlayerWithSpeed } from './AudioPlayerWithSpeed';
-import { blobToBase64 } from '../utils/audioStorage';
+import { blobToBase64, normalizeBase64DataUrl } from '../utils/audioStorage';
 import { MAX_AUDIO_UPLOAD_BYTES, AUDIO_UPLOAD_TOO_LARGE_MESSAGE } from '../utils/audioLimits';
 import {
   Upload,
@@ -242,7 +242,7 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
     setUploadError(null);
     try {
       // Upload the untouched original file. Only base64 encoding is used for storage.
-      const base64 = await blobToBase64(selectedFile, 30000);
+      const base64 = normalizeBase64DataUrl(await blobToBase64(selectedFile, 30000), selectedFile.name);
       await onUploadAudio(uploadTitle.trim() || selectedFile.name, selectedFile.name, base64, uploadDate || todayStr, uploadTranscript.trim());
       setSelectedFile(null); setUploadTitle(''); setUploadTranscript(''); setUploadDate(todayStr);
       if (fileInputRef.current) fileInputRef.current.value = '';
