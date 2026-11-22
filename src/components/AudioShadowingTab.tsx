@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AudioItem } from '../types';
 import { AudioPlayerWithSpeed } from './AudioPlayerWithSpeed';
 import { blobToBase64 } from '../utils/audioStorage';
+import { MAX_AUDIO_UPLOAD_BYTES, AUDIO_UPLOAD_TOO_LARGE_MESSAGE } from '../utils/audioLimits';
 import {
   Upload,
   Mic,
@@ -135,6 +136,7 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
     }
   }, [currentDate]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -210,6 +212,13 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_AUDIO_UPLOAD_BYTES) {
+        setUploadError(AUDIO_UPLOAD_TOO_LARGE_MESSAGE);
+        setSelectedFile(null);
+        e.target.value = '';
+        return;
+      }
+      setUploadError(null);
       setSelectedFile(file);
       if (!uploadTitle.trim()) {
         setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
@@ -225,17 +234,22 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
       return;
     }
 
+    if (selectedFile.size > MAX_AUDIO_UPLOAD_BYTES) {
+      setUploadError(AUDIO_UPLOAD_TOO_LARGE_MESSAGE);
+      return;
+    }
     setIsUploading(true);
+    setUploadError(null);
     try {
-      const prepared = await prepareRecording(selectedFile, 400_000);
-      const base64 = await blobToBase64(prepared);
-      const fileName = prepared === selectedFile ? selectedFile.name : selectedFile.name.replace(/\.[^/.]+$/, '') + '.mp3';
-      await onUploadAudio(uploadTitle.trim() || selectedFile.name, fileName, base64, uploadDate || todayStr, uploadTranscript.trim());
+      // Upload the untouched original file. Only base64 encoding is used for storage.
+      const base64 = await blobToBase64(selectedFile);
+      await onUploadAudio(uploadTitle.trim() || selectedFile.name, selectedFile.name, base64, uploadDate || todayStr, uploadTranscript.trim());
       setSelectedFile(null); setUploadTitle(''); setUploadTranscript(''); setUploadDate(todayStr);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      showToast('음성 파일이 저장되었습니다!');
+      showToast('원본 음성 파일이 저장되었습니다!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : '업로드 중 문제가 발생했습니다.');
+      const message = err instanceof Error ? err.message : '업로드 중 문제가 발생했습니다.';
+      setUploadError(message);
     } finally { setIsUploading(false); }
   };
 
@@ -539,9 +553,14 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
             />
           </div>
 
+          {uploadError && (
+            <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+              {uploadError}
+            </p>
+          )}
           <div className="flex items-center justify-between pt-1">
             <span className="text-[11px] text-slate-400">
-              {selectedFile ? `선택됨: ${selectedFile.name}` : 'MP3, M4A, WAV 파일 지원'}
+              {selectedFile ? `선택됨: ${selectedFile.name} (${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB)` : 'MP3, M4A, WAV 지원 · 최대 5MB · 원본 유지'}
             </span>
 
             <button
