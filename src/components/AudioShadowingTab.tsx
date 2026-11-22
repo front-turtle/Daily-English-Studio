@@ -242,7 +242,7 @@ export const AudioShadowingTab: React.FC<AudioShadowingTabProps> = ({
     setUploadError(null);
     try {
       // Upload the untouched original file. Only base64 encoding is used for storage.
-      const base64 = await blobToBase64(selectedFile);
+      const base64 = await blobToBase64(selectedFile, 30000);
       await onUploadAudio(uploadTitle.trim() || selectedFile.name, selectedFile.name, base64, uploadDate || todayStr, uploadTranscript.trim());
       setSelectedFile(null); setUploadTitle(''); setUploadTranscript(''); setUploadDate(todayStr);
       if (fileInputRef.current) fileInputRef.current.value = '';
