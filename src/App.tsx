@@ -1,4 +1,5 @@
 import { cacheAudioItems, hydrateAudioItems } from './utils/audioCache';
+import { base64AudioByteLength, MAX_AUDIO_UPLOAD_BYTES, AUDIO_UPLOAD_TOO_LARGE_MESSAGE } from './utils/audioLimits';
 import { recordingBudget } from './utils/recordingBudget';
 import React, { useState, useEffect, useMemo } from 'react';
 import { DailyComposition, KeyExpression, AudioItem, ActiveTab, BackupData } from './types';
@@ -38,8 +39,6 @@ import {
 } from './lib/firestoreService';
 
 // Keep each source/recording small enough that one Firestore document stays safely below 1 MiB.
-// 400k base64 characters is roughly 300 KB of binary audio. Two clips + metadata remain under the document limit.
-const MAX_SYNC_AUDIO_BASE64_CHARS = 400_000;
 
 export function App() {
   const { user, markSaving, markSynced, markError } = useAuth();
@@ -346,9 +345,9 @@ export function App() {
   ) => {
     markSaving();
 
-    if (fileBase64.length > MAX_SYNC_AUDIO_BASE64_CHARS) {
+    if (base64AudioByteLength(fileBase64) > MAX_AUDIO_UPLOAD_BYTES) {
       markError();
-      throw new Error('음성 파일이 너무 큽니다. 약 300KB 이하의 짧은 학습 음성을 사용해주세요.');
+      throw new Error(AUDIO_UPLOAD_TOO_LARGE_MESSAGE);
     }
 
     const now = Date.now();
@@ -370,11 +369,13 @@ export function App() {
     };
 
     try {
+      let persistedItem = createdItem;
       if (user) {
-        await saveAudioItemToFirestore(user.uid, createdItem);
-        await cacheAudioItems([createdItem, ...audioItems]).catch(() => setAudioCacheError('클라우드에는 저장했지만 기기 저장 공간이 부족합니다.'));
-      } else { await cacheAudioItems([createdItem, ...audioItems]); }
-      setAudioItems(previous => [createdItem, ...previous.filter(item => item.id !== createdItem.id)]);
+        // Long recordings are stored in original quality across multiple Firestore documents.
+        persistedItem = await saveAudioItemToFirestore(user.uid, createdItem);
+        await cacheAudioItems([persistedItem, ...audioItems]).catch(() => setAudioCacheError('클라우드에는 저장했지만 기기 저장 공간이 부족합니다.'));
+      } else { await cacheAudioItems([persistedItem, ...audioItems]); }
+      setAudioItems(previous => [persistedItem, ...previous.filter(item => item.id !== persistedItem.id)]);
       markSynced();
     } catch (err) {
       markError();
