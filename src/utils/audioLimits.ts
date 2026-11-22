@@ -10,3 +10,16 @@ export function base64AudioByteLength(dataUrl: string): number {
 
 export const AUDIO_UPLOAD_TOO_LARGE_MESSAGE =
   '업로드 불가: 파일 용량이 5MB를 초과했습니다. 5MB 이하의 음성 파일을 선택해주세요.';
+
+export const FIRESTORE_AUDIO_CHUNK_PREFIX = 'firestore-chunks:';
+
+export function firestoreAudioChunkCount(url?: string | null): number {
+  const match = /^firestore-chunks:(\d+)$/.exec(url || '');
+  if (!match) return 0;
+  const count = Number(match[1]);
+  return Number.isSafeInteger(count) && count > 0 && count <= 32 ? count : 0;
+}
+
+export function firestoreChunkedAudioUrl(count: number): string {
+  return `${FIRESTORE_AUDIO_CHUNK_PREFIX}${count}`;
+}
