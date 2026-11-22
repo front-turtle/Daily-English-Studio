@@ -12,6 +12,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { deleteChunkedAudioItem, firestoreAudioChunkCount, writeChunkedAudioItem } from '../utils/firestoreAudioChunks';
 import { DailyComposition, AudioItem, KeyExpression, AiTutorMessage } from '../types';
 
 // Helper to get local set of deleted IDs
@@ -217,6 +218,8 @@ export const subscribeToAudioItems = (
       const list: AudioItem[] = [];
       snapshot.forEach((d) => {
         const item = d.data() as AudioItem;
+        // The audioItems collection also contains original audio chunk documents.
+        if ((item as AudioItem & { kind?: string }).kind === 'audio-chunk') return;
         if (deletedIds.has(item.id)) {
           // Purge ghost document from Firestore
           deleteDoc(d.ref).catch(() => {});
@@ -234,7 +237,7 @@ export const subscribeToAudioItems = (
   );
 };
 
-export const saveAudioItemToFirestore = async (userId: string, audio: AudioItem) => {
+export const saveAudioItemToFirestore = async (userId: string, audio: AudioItem): Promise<AudioItem> => {
   const docRef = doc(db, 'audioItems', audio.id);
   const cleanData = sanitizeForFirestore({
     id: audio.id,
@@ -251,7 +254,14 @@ export const saveAudioItemToFirestore = async (userId: string, audio: AudioItem)
     transcript: audio.transcript || '',
     userId,
   });
+  // A Firestore document cannot hold 5MB of original audio. Store long clips
+  // atomically as ordered chunks, keeping only the URL marker on the item.
+  if (audio.audioBase64 && audio.audioBase64.length > 300_000) {
+    const url = await writeChunkedAudioItem(userId, audio.id, audio.audioBase64, cleanData);
+    return { ...audio, audioUrl: url };
+  }
   await setDoc(docRef, cleanData);
+  return audio;
 };
 
 export const updateAudioItemInFirestore = async (id: string, updates: Partial<AudioItem>) => {
@@ -265,7 +275,10 @@ export const deleteAudioItemFromFirestore = async (userId: string | undefined, i
 
   try {
     const docRef = doc(db, 'audioItems', id);
-    await deleteDoc(docRef);
+    const existing = await getDoc(docRef);
+    const count = existing.exists() ? firestoreAudioChunkCount(existing.data().audioUrl) : 0;
+    if (count) await deleteChunkedAudioItem(id, count);
+    else await deleteDoc(docRef);
   } catch (err) {
     console.warn('deleteAudioItemFromFirestore doc error:', err);
   }
