@@ -1,6 +1,6 @@
 import type { AudioItem } from '../types.ts';
 import { base64ToBlob, blobToBase64, getAudioFromStorage, saveAudioToStorage } from './audioStorage.ts';
-import { firestoreAudioChunkCount, readChunkedAudio } from './firestoreAudioChunks.ts';
+import { firestoreAudioChunkCount } from './audioLimits.ts';
 
 // Serialize fallback writes so an older, slower snapshot cannot replace a new one.
 let queue: Promise<void> = Promise.resolve();
@@ -39,6 +39,7 @@ export async function hydrateAudioItems(items: AudioItem[], strict = false): Pro
       } else {
         const chunkCount = firestoreAudioChunkCount(item.audioUrl);
         if (chunkCount) {
+          const { readChunkedAudio } = await import('./firestoreAudioChunks.ts');
           restored.audioBase64 = await readChunkedAudio(item.id, chunkCount);
           restored.audioUrl = '';
         } else if (strict) {
