@@ -1,3 +1,4 @@
+import { firestoreAudioChunkCount, readChunkedAudio } from './firestoreAudioChunks';
 /**
  * Robust IndexedDB & Blob-based Audio Storage and Resolver
  * Ensures 100% reliable audio playback on Mobile Browsers (Chrome, Safari, Samsung Internet)
@@ -252,7 +253,18 @@ export async function resolvePlayableAudioUrl(
     return objectUrl;
   }
 
-  // 4. Legacy local data/blob URL support.
+  // 4. Cloud-synced original audio stored in Firestore chunks (up to 5MB).
+  const cloudChunkCount = firestoreAudioChunkCount(audioUrl);
+  if (cloudChunkCount) {
+    const restored = await readChunkedAudio(id, cloudChunkCount);
+    const blob = base64ToBlob(restored);
+    await saveAudioToStorage(id, blob).catch(() => {});
+    const objectUrl = URL.createObjectURL(blob);
+    blobUrlCache.set(id, objectUrl);
+    return objectUrl;
+  }
+
+  // 5. Legacy local data/blob URL support.
   if (audioUrl?.startsWith('data:')) {
     return normalizeBase64DataUrl(audioUrl);
   }
