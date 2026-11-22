@@ -1,22 +1,12 @@
-import { deleteDoc, doc, getDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, writeBatch } from 'firebase/firestore';
+import { firestoreChunkedAudioUrl } from './audioLimits';
+export { firestoreAudioChunkCount } from './audioLimits';
 import { db } from '../lib/firebase';
 
 // Firestore documents are limited to 1 MiB. Keep original audio unchanged,
 // splitting its base64 representation across ordinary owner-protected documents.
 const CHUNK_LENGTH = 450_000;
-const CHUNK_PREFIX = 'firestore-chunks:';
 const MAX_CHUNKS = 32;
-
-export function firestoreAudioChunkCount(url?: string | null): number {
-  const match = /^firestore-chunks:(\d+)$/.exec(url || '');
-  if (!match) return 0;
-  const count = Number(match[1]);
-  return Number.isSafeInteger(count) && count > 0 && count <= MAX_CHUNKS ? count : 0;
-}
-
-export function firestoreChunkedAudioUrl(count: number): string {
-  return `${CHUNK_PREFIX}${count}`;
-}
 
 function chunkDocId(audioId: string, index: number): string {
   return `${audioId}__original_chunk_${index}`;
